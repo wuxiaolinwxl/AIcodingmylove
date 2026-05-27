@@ -94,17 +94,27 @@
             <!-- Text -->
             <p v-if="msg.msgType === 'text'" class="whitespace-pre-wrap break-words leading-relaxed text-sm">{{ msg.content }}</p>
             <!-- Image -->
-            <img v-else-if="msg.msgType === 'image'" :src="msg.ossKey" class="rounded-xl max-w-full max-h-72 cursor-pointer" />
+            <a v-else-if="msg.msgType === 'image'" :href="msg.ossKey || '#'" target="_blank" rel="noopener" class="block">
+              <img :src="msg.ossKey || ''" class="rounded-xl max-w-full max-h-72 cursor-pointer" />
+            </a>
             <!-- File -->
-            <div v-else-if="msg.msgType === 'file'" class="flex items-center gap-2">
+            <a
+              v-else-if="msg.msgType === 'file'"
+              :href="msg.ossKey || '#'"
+              :download="msg.fileName || 'download'"
+              target="_blank"
+              rel="noopener"
+              :class="['flex items-center gap-2 transition-opacity hover:opacity-90',
+                msg.senderId === userStore.user?.id ? 'text-white' : 'text-ink-900']"
+            >
               <div :class="['w-9 h-9 rounded-lg flex items-center justify-center', msg.senderId === userStore.user?.id ? 'bg-white/20' : 'bg-pink-200']">
                 <Paperclip :size="16" />
               </div>
               <div class="min-w-0">
-                <p class="text-sm truncate">{{ msg.fileName }}</p>
-                <p class="text-[10px] opacity-70">{{ formatSize(msg.fileSize) }}</p>
+                <p class="text-sm truncate underline-offset-2 hover:underline">{{ msg.fileName }}</p>
+                <p class="text-[10px] opacity-70">{{ formatSize(msg.fileSize) }} · 点击下载</p>
               </div>
-            </div>
+            </a>
             <!-- Time + read status -->
             <div :class="['flex items-center gap-1 mt-1', msg.senderId === userStore.user?.id ? 'justify-end' : '']">
               <span class="text-[10px] opacity-60">{{ formatTime(msg.createdAt) }}</span>
