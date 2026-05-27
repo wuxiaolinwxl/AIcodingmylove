@@ -11,14 +11,20 @@
 
     <!-- Photo -->
     <div v-if="item.type === 'photo'" class="rounded-xl overflow-hidden bg-cream-100 mb-3">
-      <img :src="item.ossUrl" :alt="item.title || ''" class="w-full h-auto" loading="lazy" />
+      <img :src="item.ossUrl || ''" :alt="item.title || ''" class="w-full h-auto" loading="lazy" />
     </div>
 
     <!-- Video -->
     <div v-else-if="item.type === 'video'" class="rounded-xl overflow-hidden bg-ink-900 mb-3">
-      <video controls :poster="item.coverUrl || undefined" class="w-full">
-        <source :src="item.ossUrl" />
-      </video>
+      <video
+        v-if="item.ossUrl"
+        :src="item.ossUrl"
+        :poster="item.coverUrl || undefined"
+        controls
+        playsinline
+        preload="metadata"
+        class="w-full"
+      ></video>
     </div>
 
     <!-- Song -->
@@ -29,15 +35,30 @@
         </div>
         <span class="text-sm font-medium text-ink-900 truncate">{{ item.title || '未命名歌曲' }}</span>
       </div>
-      <audio controls class="w-full">
-        <source :src="item.ossUrl" />
-      </audio>
+      <audio
+        v-if="item.ossUrl"
+        :src="item.ossUrl"
+        controls
+        preload="metadata"
+        class="w-full"
+      ></audio>
     </div>
 
     <!-- Text -->
     <div v-else-if="item.type === 'text'" class="bg-cream-50 border border-cream-200 rounded-xl p-4 mb-3">
       <Quote :size="16" class="text-rose-300 mb-2" />
-      <p class="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed">{{ item.content }}</p>
+      <p
+        class="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed"
+        :class="!expanded && isLong ? 'line-clamp-5' : ''"
+      >{{ item.content }}</p>
+      <button
+        v-if="isLong"
+        @click="expanded = !expanded"
+        class="mt-2 inline-flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600"
+      >
+        <component :is="expanded ? ChevronUp : ChevronDown" :size="14" />
+        {{ expanded ? '收起' : '展开全文' }}
+      </button>
     </div>
 
     <!-- Title & description (non-text) -->
@@ -59,8 +80,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Image, Video, Music, FileText, Quote, Trash2 } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { Image, Video, Music, FileText, Quote, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 
 const props = defineProps<{
@@ -90,6 +111,13 @@ const typeMap = {
 
 const typeIcon = computed(() => typeMap[props.item.type].icon)
 const typeLabel = computed(() => typeMap[props.item.type].label)
+
+const TEXT_PREVIEW_LIMIT = 140
+const expanded = ref(false)
+const isLong = computed(() => {
+  const c = props.item.content || ''
+  return c.length > TEXT_PREVIEW_LIMIT || c.split('\n').length > 6
+})
 
 function formatDate(d: string) {
   const date = new Date(d)
