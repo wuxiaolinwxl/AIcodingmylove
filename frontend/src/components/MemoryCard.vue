@@ -2,11 +2,14 @@
   <div class="card group">
     <!-- Header -->
     <div class="flex items-center justify-between mb-3">
-      <span class="chip">
-        <component :is="typeIcon" :size="12" :stroke-width="2" />
-        {{ typeLabel }}
-      </span>
-      <span class="text-xs text-ink-500">{{ formatDate(item.memoryDate) }}</span>
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="chip">
+          <component :is="typeIcon" :size="12" :stroke-width="2" />
+          {{ typeLabel }}
+        </span>
+        <span class="text-xs text-ink-500 truncate">来自 {{ uploaderName }}</span>
+      </div>
+      <span class="text-xs text-ink-500 flex-shrink-0">{{ formatDate(item.memoryDate) }}</span>
     </div>
 
     <!-- Photo -->
@@ -102,6 +105,7 @@
 import { computed, ref } from 'vue'
 import { Image, Video, Music, FileText, Quote, Trash2, ChevronDown, ChevronUp, Paperclip, Download } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
+import { useCoupleStore } from '@/stores/couple'
 
 const props = defineProps<{
   item: {
@@ -121,7 +125,15 @@ const props = defineProps<{
 defineEmits<{ remove: [id: number] }>()
 
 const userStore = useUserStore()
+const coupleStore = useCoupleStore()
 const userId = computed(() => userStore.user?.id)
+
+const uploaderName = computed(() => {
+  if (props.item.uploaderId === userStore.user?.id) return '我'
+  const members = coupleStore.info?.members || []
+  const m = members.find((u) => u.id === props.item.uploaderId)
+  return m?.nickname || m?.username || 'TA'
+})
 
 const typeMap = {
   photo: { icon: Image, label: '照片' },

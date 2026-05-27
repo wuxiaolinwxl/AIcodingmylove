@@ -2,11 +2,14 @@
   <div class="card group">
     <!-- Header -->
     <div class="flex items-center justify-between mb-3">
-      <span class="chip">
-        <Images :size="12" :stroke-width="2" />
-        相册 · {{ items.length }} 张
-      </span>
-      <span class="text-xs text-ink-500">{{ formatDate(items[0]?.memoryDate) }}</span>
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="chip">
+          <Images :size="12" :stroke-width="2" />
+          相册 · {{ items.length }} 张
+        </span>
+        <span class="text-xs text-ink-500 truncate">来自 {{ uploaderText }}</span>
+      </div>
+      <span class="text-xs text-ink-500 flex-shrink-0">{{ formatDate(items[0]?.memoryDate) }}</span>
     </div>
 
     <!-- Thumbnail grid -->
@@ -39,10 +42,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Images, Maximize2 } from 'lucide-vue-next'
+import { useUserStore } from '@/stores/user'
+import { useCoupleStore } from '@/stores/couple'
 
 const props = defineProps<{
   items: Array<{
     id: number
+    uploaderId: number
     ossUrl: string | null
     memoryDate: string
     title: string | null
@@ -50,6 +56,9 @@ const props = defineProps<{
 }>()
 
 defineEmits<{ open: [items: typeof props.items, index: number] }>()
+
+const userStore = useUserStore()
+const coupleStore = useCoupleStore()
 
 const MAX = 4
 
@@ -62,6 +71,18 @@ const gridClass = computed(() => {
   if (count === 2) return 'grid-cols-2'
   if (count === 3) return 'grid-cols-3'
   return 'grid-cols-2'
+})
+
+const uploaderText = computed(() => {
+  const ids = [...new Set(props.items.map((i) => i.uploaderId))]
+  const members = coupleStore.info?.members || []
+  return ids
+    .map((id) => {
+      if (id === userStore.user?.id) return '我'
+      const m = members.find((u) => u.id === id)
+      return m?.nickname || m?.username || 'TA'
+    })
+    .join('、')
 })
 
 function formatDate(d: string | undefined) {
