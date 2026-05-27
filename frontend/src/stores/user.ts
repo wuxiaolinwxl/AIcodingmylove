@@ -1,0 +1,61 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { authApi } from '@/api'
+
+export interface UserInfo {
+  id: number
+  username: string
+  nickname: string
+  email: string | null
+  avatarUrl: string | null
+  coupleId: number | null
+}
+
+export const useUserStore = defineStore('user', () => {
+  const token = ref(localStorage.getItem('ms_token') || '')
+  const user = ref<UserInfo | null>(null)
+  const loading = ref(false)
+
+  const isLoggedIn = computed(() => !!token.value)
+  const isBound = computed(() => !!user.value?.coupleId)
+
+  function setAuth(t: string, u: UserInfo) {
+    token.value = t
+    user.value = u
+    localStorage.setItem('ms_token', t)
+  }
+
+  async function login(data: { username: string; password: string }) {
+    const res = await authApi.login(data)
+    setAuth(res.token, res.user)
+    return res
+  }
+
+  async function register(data: { username: string; password: string; email?: string; nickname?: string }) {
+    const payload: Record<string, string> = { username: data.username, password: data.password }
+    if (data.email) payload.email = data.email
+    if (data.nickname) payload.nickname = data.nickname
+    const res = await authApi.register(payload)
+    setAuth(res.token, res.user)
+    return res
+  }
+
+  async function fetchMe() {
+    loading.value = true
+    try {
+      const u = await authApi.me()
+      user.value = u
+      return u
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function logout() {
+    token.value = ''
+    user.value = null
+    localStorage.removeItem('ms_token')
+  }
+
+  return { token, user, loading, isLoggedIn, isBound, setAuth, login, register, fetchMe, logout }
+})
