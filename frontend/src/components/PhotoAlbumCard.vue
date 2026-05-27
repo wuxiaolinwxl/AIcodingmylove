@@ -60,7 +60,7 @@ defineEmits<{ open: [items: typeof props.items, index: number] }>()
 const userStore = useUserStore()
 const coupleStore = useCoupleStore()
 
-const MAX = 4
+const MAX = 9
 
 const displayItems = computed(() => props.items.slice(0, MAX))
 const extra = computed(() => Math.max(0, props.items.length - MAX))
@@ -69,8 +69,8 @@ const gridClass = computed(() => {
   const count = displayItems.value.length
   if (count === 1) return 'grid-cols-1'
   if (count === 2) return 'grid-cols-2'
-  if (count === 3) return 'grid-cols-3'
-  return 'grid-cols-2'
+  if (count === 4) return 'grid-cols-2'
+  return 'grid-cols-3'
 })
 
 const uploaderText = computed(() => {
