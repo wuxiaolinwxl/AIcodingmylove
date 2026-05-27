@@ -1,0 +1,25 @@
+{
+  "name": "Memory Space · 双人记忆空间",
+  "short_name": "MemorySpace",
+  "description": "属于你们两个人的记忆空间",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF7F0",
+  "theme_color": "#D85667",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/heart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/heart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -12,7 +12,9 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
+import { Couple } from '../../entities/couple.entity';
 import { ChatService } from './chat.service';
+import { PushService } from '../push/push.service';
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -27,8 +29,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private jwtService: JwtService,
     private chatService: ChatService,
+    private pushService: PushService,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(Couple)
+    private coupleRepo: Repository<Couple>,
   ) {}
 
   private addSocket(coupleId: number, userId: number, socketId: string): boolean {
@@ -124,6 +129,36 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     this.server.to(`couple_${coupleId}`).emit('message:new', msg);
+
+    this.notifyPartnerIfOffline(coupleId, userId, msg).catch(() => {});
+  }
+
+  private async notifyPartnerIfOffline(coupleId: number, senderId: number, msg: any) {
+    const couple = await this.coupleRepo.findOne({ where: { id: coupleId } });
+    if (!couple) return;
+    const partnerId = couple.userAId === senderId ? couple.userBId : couple.userAId;
+    if (!partnerId) return;
+    const users = this.presence.get(coupleId);
+    const partnerOnline = !!users?.get(partnerId)?.size;
+    if (partnerOnline) return;
+
+    const sender = await this.userRepo.findOne({ where: { id: senderId } });
+    const senderName = sender?.nickname || sender?.username || '对方';
+    let body = '';
+    if (msg.msgType === 'text') {
+      body = (msg.content || '').slice(0, 80);
+    } else if (msg.msgType === 'image') {
+      body = '[图片]';
+    } else if (msg.msgType === 'file') {
+      body = `[文件] ${msg.fileName || ''}`.trim();
+    }
+    await this.pushService.sendToUser(partnerId, {
+      title: `${senderName} 给你发来一条消息`,
+      body: body || '点击查看',
+      url: '/chat',
+      tag: `chat-${coupleId}`,
+      icon: '/heart.svg',
+    });
   }
 
   @SubscribeMessage('typing')

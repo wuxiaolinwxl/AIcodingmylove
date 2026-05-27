@@ -14,6 +14,16 @@ async function bootstrap() {
   app.use(createPinia())
   app.use(router)
   app.mount('#app')
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('SW register failed', e))
+    navigator.serviceWorker.addEventListener('message', (ev) => {
+      const data = ev.data
+      if (data && data.type === 'navigate' && typeof data.url === 'string') {
+        router.push(data.url).catch(() => {})
+      }
+    })
+  }
 }
 
 bootstrap()

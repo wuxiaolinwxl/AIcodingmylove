@@ -7,11 +7,13 @@ import { CoupleModule } from './modules/couple/couple.module';
 import { MediaModule } from './modules/media/media.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { OssModule } from './modules/oss/oss.module';
+import { PushModule } from './modules/push/push.module';
 import { User } from './entities/user.entity';
 import { Couple } from './entities/couple.entity';
 import { Invitation } from './entities/invitation.entity';
 import { Memory } from './entities/memory.entity';
 import { Message } from './entities/message.entity';
+import { PushSubscription } from './entities/push-subscription.entity';
 
 @Module({
   imports: [
@@ -23,7 +25,7 @@ import { Message } from './entities/message.entity';
       username: process.env.DB_USER || 'ms_user',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'memory_space',
-      entities: [User, Couple, Invitation, Memory, Message],
+      entities: [User, Couple, Invitation, Memory, Message, PushSubscription],
       synchronize: true,
       charset: 'utf8mb4',
       timezone: '+08:00',
@@ -34,6 +36,7 @@ import { Message } from './entities/message.entity';
     MediaModule,
     ChatModule,
     OssModule,
+    PushModule,
   ],
 })
 export class AppModule {}

@@ -43,3 +43,11 @@ export const ossApi = {
     }).then((r) => r.data)
   },
 }
+
+export const pushApi = {
+  publicKey: () => http.get<{ publicKey: string }>('/push/vapid-public-key').then((r) => r.data),
+  subscribe: (data: { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string }) =>
+    http.post('/push/subscribe', data).then((r) => r.data),
+  unsubscribe: (endpoint: string) =>
+    http.delete('/push/subscribe', { data: { endpoint } }).then((r) => r.data),
+}

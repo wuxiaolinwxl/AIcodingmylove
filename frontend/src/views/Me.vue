@@ -86,6 +86,41 @@
         </div>
       </div>
 
+      <!-- Notification settings -->
+      <div class="card !p-5 mb-4">
+        <div class="flex items-center gap-2 mb-3">
+          <Bell :size="16" class="text-ink-500" />
+          <h3 class="text-sm font-bold text-ink-900">消息提醒</h3>
+        </div>
+        <p class="text-xs text-ink-500 mb-3">开启后，TA 给你发消息时即使应用没打开也会收到通知。</p>
+        <div v-if="!pushSupported" class="text-xs text-rose-500 mb-3">当前浏览器不支持 Web 推送。建议把网页"添加到主屏幕"再试。</div>
+        <div v-else-if="!isHttps" class="text-xs text-rose-500 mb-3">推送需要 HTTPS（或 localhost），当前为 HTTP 环境。</div>
+        <div class="flex items-center justify-between">
+          <span :class="['text-sm', pushEnabled ? 'text-emerald-600' : 'text-ink-700']">
+            {{ pushStatusLabel }}
+          </span>
+          <button
+            v-if="!pushEnabled"
+            @click="enablePush"
+            class="btn-primary !py-1.5 !px-3 text-xs"
+            :disabled="pushBusy || !pushSupported || !isHttps"
+          >
+            <Loader2 v-if="pushBusy" :size="12" class="animate-spin" />
+            {{ pushBusy ? '处理中...' : '开启提醒' }}
+          </button>
+          <button
+            v-else
+            @click="disablePush"
+            class="btn-ghost !py-1.5 !px-3 text-xs"
+            :disabled="pushBusy"
+          >
+            <Loader2 v-if="pushBusy" :size="12" class="animate-spin" />
+            {{ pushBusy ? '处理中...' : '关闭提醒' }}
+          </button>
+        </div>
+        <p v-if="pushError" class="text-xs text-rose-500 mt-2">{{ pushError }}</p>
+      </div>
+
       <!-- About + logout -->
       <div class="card !p-0 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-cream-200">
@@ -110,10 +145,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2 } from 'lucide-vue-next'
+import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2, Bell } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
 import { memoryApi } from '@/api'
+import { isPushSupported, getCurrentPushSubscription, subscribePush, unsubscribePush, notificationPermission } from '@/utils/push'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -128,6 +164,51 @@ const stats = ref([
   { type: 'text', label: '文字', icon: FileText, count: 0 },
   { type: 'file', label: '文件', icon: Paperclip, count: 0 },
 ])
+
+const pushSupported = ref(isPushSupported())
+const pushEnabled = ref(false)
+const pushBusy = ref(false)
+const pushError = ref('')
+const isHttps = computed(() => location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+const pushStatusLabel = computed(() => {
+  if (!pushSupported.value) return '不支持'
+  if (pushEnabled.value) return '已开启'
+  if (notificationPermission() === 'denied') return '权限已被禁用，请到浏览器设置中开启'
+  return '未开启'
+})
+
+async function refreshPushState() {
+  if (!pushSupported.value) return
+  try {
+    const sub = await getCurrentPushSubscription()
+    pushEnabled.value = !!sub && notificationPermission() === 'granted'
+  } catch {
+    pushEnabled.value = false
+  }
+}
+
+async function enablePush() {
+  pushBusy.value = true
+  pushError.value = ''
+  try {
+    const res = await subscribePush()
+    if (!res.ok) pushError.value = res.reason || '开启失败'
+    await refreshPushState()
+  } finally {
+    pushBusy.value = false
+  }
+}
+
+async function disablePush() {
+  pushBusy.value = true
+  pushError.value = ''
+  try {
+    await unsubscribePush()
+    await refreshPushState()
+  } finally {
+    pushBusy.value = false
+  }
+}
 
 const partner = computed(() => {
   const members = coupleStore.info?.members || []
@@ -174,5 +255,7 @@ onMounted(async () => {
   stats.value.forEach((s) => {
     s.count = counts[s.type] || 0
   })
+
+  refreshPushState()
 })
 </script>
