@@ -68,6 +68,7 @@ import { Clock, MessageCircle, User, Heart } from 'lucide-vue-next'
 import { useCoupleStore } from '@/stores/couple'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
+import { primeAudioOnGesture, notifyNewMessage, stopTitleFlash } from '@/utils/notify'
 
 const route = useRoute()
 const coupleStore = useCoupleStore()
@@ -93,6 +94,23 @@ const daysCount = computed(() => {
   return Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
 })
 
+interface IncomingMsg {
+  senderId: number
+  msgType: 'text' | 'image' | 'file'
+  content?: string | null
+  fileName?: string | null
+}
+
+function previewOf(msg: IncomingMsg): string {
+  if (msg.msgType === 'text') {
+    const t = (msg.content || '').replace(/\s+/g, ' ').trim()
+    return t.length > 30 ? t.slice(0, 30) + '…' : t
+  }
+  if (msg.msgType === 'image') return '[图片]'
+  if (msg.msgType === 'file') return `[文件] ${msg.fileName || ''}`.trim()
+  return ''
+}
+
 function setupBadgeSocket() {
   if (!userStore.token) return
   socket = io(`${location.protocol}//${location.host}/chat`, {
@@ -101,14 +119,16 @@ function setupBadgeSocket() {
     path: '/socket.io',
   })
 
-  socket.on('message:new', (msg: { senderId: number }) => {
+  socket.on('message:new', (msg: IncomingMsg) => {
     if (msg.senderId === userStore.user?.id) return
-    if (route.path === '/chat') return
-    chatStore.increment(1)
+    const onChat = route.path === '/chat'
+    if (!onChat) chatStore.increment(1)
+    notifyNewMessage({ preview: previewOf(msg) })
   })
 }
 
 onMounted(async () => {
+  primeAudioOnGesture()
   if (!coupleStore.info) {
     await coupleStore.fetchInfo()
   }
@@ -118,5 +138,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   socket?.disconnect()
+  stopTitleFlash()
 })
 </script>
