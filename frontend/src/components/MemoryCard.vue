@@ -44,6 +44,25 @@
       ></audio>
     </div>
 
+    <!-- Generic file -->
+    <a
+      v-else-if="item.type === 'file' && item.ossUrl"
+      :href="item.ossUrl"
+      :download="item.fileName || item.title || 'download'"
+      target="_blank"
+      rel="noopener"
+      class="flex items-center gap-3 bg-cream-50 border border-cream-200 rounded-xl p-3 mb-3 hover:bg-cream-100 transition-colors"
+    >
+      <div class="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
+        <Paperclip :size="18" class="text-rose-500" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-ink-900 truncate">{{ item.fileName || item.title || '未命名文件' }}</p>
+        <p class="text-xs text-ink-500">{{ formatSize(item.fileSize) }} · 点击下载</p>
+      </div>
+      <Download :size="16" class="text-ink-500 flex-shrink-0" />
+    </a>
+
     <!-- Text -->
     <div v-else-if="item.type === 'text'" class="bg-cream-50 border border-cream-200 rounded-xl p-4 mb-3">
       <Quote :size="16" class="text-rose-300 mb-2" />
@@ -81,19 +100,21 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Image, Video, Music, FileText, Quote, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { Image, Video, Music, FileText, Quote, Trash2, ChevronDown, ChevronUp, Paperclip, Download } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 
 const props = defineProps<{
   item: {
     id: number
     uploaderId: number
-    type: 'photo' | 'video' | 'song' | 'text'
+    type: 'photo' | 'video' | 'song' | 'text' | 'file'
     title: string | null
     content: string | null
     ossUrl: string | null
     coverUrl: string | null
     memoryDate: string
+    fileName?: string | null
+    fileSize?: number | null
   }
 }>()
 
@@ -107,6 +128,7 @@ const typeMap = {
   video: { icon: Video, label: '视频' },
   song: { icon: Music, label: '歌曲' },
   text: { icon: FileText, label: '文字' },
+  file: { icon: Paperclip, label: '文件' },
 }
 
 const typeIcon = computed(() => typeMap[props.item.type].icon)
@@ -122,5 +144,12 @@ const isLong = computed(() => {
 function formatDate(d: string) {
   const date = new Date(d)
   return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`
+}
+
+function formatSize(bytes?: number | null) {
+  if (!bytes && bytes !== 0) return ''
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 </script>

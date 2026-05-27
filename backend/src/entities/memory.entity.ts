@@ -13,14 +13,17 @@ export class Memory {
   @Column({ type: 'int' })
   uploaderId: number;
 
-  @Column({ type: 'enum', enum: ['photo', 'video', 'song', 'text'] })
-  type: 'photo' | 'video' | 'song' | 'text';
+  @Column({ type: 'enum', enum: ['photo', 'video', 'song', 'text', 'file'] })
+  type: 'photo' | 'video' | 'song' | 'text' | 'file';
 
   @Column({ type: 'varchar', length: 200, nullable: true })
   title: string;
 
   @Column({ type: 'text', nullable: true })
   content: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  fileName: string;
 
   @Column({ type: 'varchar', length: 512, nullable: true })
   ossKey: string;

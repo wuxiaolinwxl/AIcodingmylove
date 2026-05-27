@@ -19,6 +19,7 @@ export class MediaService {
       type: dto.type,
       title: dto.title,
       content: dto.content,
+      fileName: dto.fileName,
       ossKey: dto.ossKey,
       ossUrl: dto.ossUrl,
       coverUrl: dto.coverUrl,
@@ -87,7 +88,7 @@ export class MediaService {
       .groupBy('m.type')
       .getRawMany();
 
-    const result: Record<string, number> = { photo: 0, video: 0, song: 0, text: 0 };
+    const result: Record<string, number> = { photo: 0, video: 0, song: 0, text: 0, file: 0 };
     for (const r of rows) {
       result[r.type] = Number(r.count);
     }

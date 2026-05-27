@@ -122,7 +122,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Plus, Search, Loader2, Sparkles, X, ChevronLeft, ChevronRight, Layers, Image, Video, Music, FileText } from 'lucide-vue-next'
+import { Plus, Search, Loader2, Sparkles, X, ChevronLeft, ChevronRight, Layers, Image, Video, Music, FileText, Paperclip } from 'lucide-vue-next'
 import { memoryApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import MemoryCard from '@/components/MemoryCard.vue'
@@ -133,7 +133,7 @@ interface MemoryItem {
   id: number
   coupleId: number
   uploaderId: number
-  type: 'photo' | 'video' | 'song' | 'text'
+  type: 'photo' | 'video' | 'song' | 'text' | 'file'
   title: string | null
   content: string | null
   ossKey: string | null
@@ -164,6 +164,7 @@ const typeFilters = [
   { value: 'video', label: '视频', icon: Video },
   { value: 'song', label: '歌曲', icon: Music },
   { value: 'text', label: '文字', icon: FileText },
+  { value: 'file', label: '文件', icon: Paperclip },
 ]
 
 const lightbox = ref({ show: false, items: [] as MemoryItem[], index: 0 })

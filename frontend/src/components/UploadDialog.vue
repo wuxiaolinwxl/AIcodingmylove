@@ -15,7 +15,7 @@
           </div>
 
           <!-- Type selection -->
-          <div class="grid grid-cols-4 gap-2 mb-5">
+          <div class="grid grid-cols-5 gap-2 mb-5">
             <button
               v-for="t in types"
               :key="t.value"
@@ -104,7 +104,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { X, Image, Video, Music, FileText, Upload, Loader2, AlertCircle, CheckCircle } from 'lucide-vue-next'
+import { X, Image, Video, Music, FileText, Upload, Loader2, AlertCircle, CheckCircle, Paperclip } from 'lucide-vue-next'
 import { memoryApi } from '@/api'
 import { uploadToOss } from '@/api/upload'
 
@@ -122,6 +122,7 @@ const types = [
   { value: 'video', label: '视频', icon: Video },
   { value: 'song', label: '歌曲', icon: Music },
   { value: 'text', label: '文字', icon: FileText },
+  { value: 'file', label: '文件', icon: Paperclip },
 ]
 
 const form = ref({
@@ -204,6 +205,7 @@ async function submit() {
             content: form.value.content || undefined,
             ossKey: f.key,
             ossUrl: f.url,
+            fileName: f.name,
             fileSize: f.size,
             memoryDate,
           }),
@@ -216,6 +218,7 @@ async function submit() {
         content: form.value.content || undefined,
         ossKey: uploadedKey.value || undefined,
         ossUrl: uploadedUrl.value || undefined,
+        fileName: uploadedName.value || undefined,
         fileSize: uploadedSize.value || 0,
         memoryDate,
       })

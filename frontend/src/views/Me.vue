@@ -56,7 +56,7 @@
       </div>
 
       <!-- Stats -->
-      <div class="grid grid-cols-4 gap-3 mb-4">
+      <div class="grid grid-cols-5 gap-3 mb-4">
         <div v-for="s in stats" :key="s.type" class="card !p-3 text-center">
           <component :is="s.icon" :size="18" :stroke-width="1.7" class="mx-auto mb-1 text-ink-500" />
           <p class="text-lg font-bold text-ink-900">{{ s.count }}</p>
@@ -110,7 +110,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Loader2 } from 'lucide-vue-next'
+import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2 } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
 import { memoryApi } from '@/api'
@@ -126,6 +126,7 @@ const stats = ref([
   { type: 'video', label: '视频', icon: Video, count: 0 },
   { type: 'song', label: '歌曲', icon: Music, count: 0 },
   { type: 'text', label: '文字', icon: FileText, count: 0 },
+  { type: 'file', label: '文件', icon: Paperclip, count: 0 },
 ])
 
 const partner = computed(() => {
