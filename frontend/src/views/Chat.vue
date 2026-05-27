@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-[100dvh] bg-cream-50">
+  <div class="flex flex-col h-full bg-cream-50">
     <!-- Header -->
     <div class="bg-white border-b border-cream-200 px-4 py-3 flex items-center gap-3">
       <div class="w-9 h-9 rounded-full bg-cream-100 border border-cream-200 flex items-center justify-center text-sm font-medium text-ink-700">
@@ -128,7 +128,7 @@
     </div>
 
     <!-- Input area -->
-    <div class="bg-white border-t border-cream-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+    <div class="bg-white border-t border-cream-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] mb-14 md:mb-0">
       <div v-if="uploading" class="flex items-center gap-2 mb-2 text-sm text-ink-500">
         <Loader2 :size="14" class="animate-spin" />
         <span>正在上传 {{ uploadFileName }}...</span>
