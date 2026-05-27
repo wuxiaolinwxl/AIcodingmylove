@@ -271,6 +271,7 @@
           placeholder="输入消息..."
           @keydown.enter.exact.prevent="sendText"
           @input="handleTyping"
+          @focus="onInputFocus"
         ></textarea>
         <button @click="sendText" class="btn-primary !px-3.5 !py-2" :disabled="!inputText.trim()">
           <SendIcon :size="16" />
@@ -552,6 +553,19 @@ function scrollToBottom() {
   })
 }
 
+function onInputFocus() {
+  showEmoji.value = false
+  setTimeout(scrollToBottom, 50)
+  setTimeout(scrollToBottom, 250)
+  setTimeout(scrollToBottom, 500)
+}
+
+function onViewportResize() {
+  if (document.activeElement === inputEl.value) {
+    scrollToBottom()
+  }
+}
+
 async function loadHistory() {
   loading.value = true
   try {
@@ -748,6 +762,9 @@ onMounted(async () => {
   loadHistory()
   setupSocket()
   document.addEventListener('click', handleDocClick)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onViewportResize)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -755,6 +772,9 @@ onBeforeUnmount(() => {
   if (typingTimer) clearTimeout(typingTimer)
   if (searchTimer) clearTimeout(searchTimer)
   document.removeEventListener('click', handleDocClick)
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', onViewportResize)
+  }
 })
 </script>
 
