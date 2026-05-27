@@ -81,16 +81,37 @@
         <!-- Message bubble -->
         <div
           :data-msg-id="msg.id"
-          :class="['flex transition-shadow duration-300 rounded-2xl',
+          :class="['group/msg flex transition-shadow duration-300 rounded-2xl items-center gap-1',
             msg.senderId === userStore.user?.id ? 'justify-end' : 'justify-start',
             highlightedId === msg.id ? 'ring-2 ring-rose-300 ring-offset-2 ring-offset-cream-50' : '']"
         >
+          <button
+            v-if="msg.senderId === userStore.user?.id"
+            @click="startReply(msg)"
+            class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
+            title="引用回复"
+          >
+            <Reply :size="14" />
+          </button>
           <div :class="[
             'max-w-[75%] px-3.5 py-2 rounded-2xl',
             msg.senderId === userStore.user?.id
               ? 'bg-emerald-500 text-white rounded-br-md'
               : 'bg-pink-100 text-ink-900 rounded-bl-md border border-pink-200'
           ]">
+            <!-- Quoted reply -->
+            <button
+              v-if="msg.replyToSnippet"
+              @click="jumpToMessageId(msg.replyToId)"
+              :class="['w-full text-left mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs leading-snug truncate-2',
+                msg.senderId === userStore.user?.id
+                  ? 'bg-white/15 border-white/60 text-white/90 hover:bg-white/25'
+                  : 'bg-white/60 border-rose-300 text-ink-700 hover:bg-white']"
+            >
+              <span class="font-medium opacity-80">{{ quoteSenderName(msg.replyToSenderId) }}</span>
+              <span class="opacity-80">：</span>
+              <span class="opacity-90">{{ msg.replyToSnippet }}</span>
+            </button>
             <!-- Text -->
             <p v-if="msg.msgType === 'text'" class="whitespace-pre-wrap break-words leading-relaxed text-sm">{{ msg.content }}</p>
             <!-- Image -->
@@ -124,6 +145,14 @@
               </template>
             </div>
           </div>
+          <button
+            v-if="msg.senderId !== userStore.user?.id"
+            @click="startReply(msg)"
+            class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
+            title="引用回复"
+          >
+            <Reply :size="14" />
+          </button>
         </div>
       </template>
 
@@ -139,6 +168,16 @@
 
     <!-- Input area -->
     <div class="bg-white border-t border-cream-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] mb-14 md:mb-0">
+      <div v-if="replyTo" class="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-cream-100 border-l-2 border-rose-400">
+        <Reply :size="14" class="text-rose-500 flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <p class="text-[11px] text-rose-500 font-medium">回复 {{ quoteSenderName(replyTo.senderId) }}</p>
+          <p class="text-xs text-ink-700 truncate">{{ quotePreviewText(replyTo) }}</p>
+        </div>
+        <button @click="cancelReply" class="text-ink-400 hover:text-ink-700 flex-shrink-0">
+          <X :size="14" />
+        </button>
+      </div>
       <div v-if="uploading" class="flex items-center gap-2 mb-2 text-sm text-ink-500">
         <Loader2 :size="14" class="animate-spin" />
         <span>正在上传 {{ uploadFileName }}...</span>
@@ -171,7 +210,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
-import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck } from 'lucide-vue-next'
+import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply } from 'lucide-vue-next'
 import { io, Socket } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
@@ -190,6 +229,9 @@ interface Msg {
   fileSize: number
   readAt: string | null
   createdAt: string
+  replyToId?: number | null
+  replyToSenderId?: number | null
+  replyToSnippet?: string | null
 }
 
 const userStore = useUserStore()
@@ -217,6 +259,31 @@ const partnerTyping = ref(false)
 const partnerOnline = ref(false)
 const uploading = ref(false)
 const uploadFileName = ref('')
+const replyTo = ref<Msg | null>(null)
+
+function startReply(msg: Msg) {
+  replyTo.value = msg
+  nextTick(() => inputEl.value?.focus())
+}
+function cancelReply() {
+  replyTo.value = null
+}
+
+function quotePreviewText(msg: Msg): string {
+  if (msg.msgType === 'text') {
+    const t = (msg.content || '').replace(/\s+/g, ' ').trim()
+    return t.length > 80 ? t.slice(0, 80) + '…' : t
+  }
+  if (msg.msgType === 'image') return '[图片]'
+  if (msg.msgType === 'file') return `[文件:${msg.fileName || '文件'}]`
+  return ''
+}
+
+function quoteSenderName(senderId: number | null | undefined) {
+  if (!senderId) return ''
+  if (senderId === userStore.user?.id) return '我'
+  return partnerName.value
+}
 
 let socket: Socket | null = null
 let typingTimer: ReturnType<typeof setTimeout> | null = null
@@ -362,8 +429,13 @@ function setupSocket() {
 function sendText() {
   const text = inputText.value.trim()
   if (!text || !socket) return
-  socket.emit('message:send', { msgType: 'text', content: text })
+  socket.emit('message:send', {
+    msgType: 'text',
+    content: text,
+    replyToId: replyTo.value?.id,
+  })
   inputText.value = ''
+  replyTo.value = null
   typingSent = false
 }
 
@@ -384,7 +456,13 @@ async function handleImageUpload(e: Event) {
   uploadFileName.value = file.name
   try {
     const res = await uploadToOss(file, 'chat', 'image')
-    socket.emit('message:send', { msgType: 'image', ossKey: res.url, fileSize: res.size })
+    socket.emit('message:send', {
+      msgType: 'image',
+      ossKey: res.url,
+      fileSize: res.size,
+      replyToId: replyTo.value?.id,
+    })
+    replyTo.value = null
   } finally {
     uploading.value = false
     if (imageInput.value) imageInput.value.value = ''
@@ -398,7 +476,14 @@ async function handleFileUpload(e: Event) {
   uploadFileName.value = file.name
   try {
     const res = await uploadToOss(file, 'chat', 'file')
-    socket.emit('message:send', { msgType: 'file', ossKey: res.url, fileName: res.name, fileSize: res.size })
+    socket.emit('message:send', {
+      msgType: 'file',
+      ossKey: res.url,
+      fileName: res.name,
+      fileSize: res.size,
+      replyToId: replyTo.value?.id,
+    })
+    replyTo.value = null
   } finally {
     uploading.value = false
     if (fileInput.value) fileInput.value.value = ''
@@ -424,6 +509,16 @@ function jumpToMessage(msg: Msg) {
         }
       })
     })
+  }
+}
+
+function jumpToMessageId(id: number | null | undefined) {
+  if (!id) return
+  const el = msgContainer.value?.querySelector(`[data-msg-id="${id}"]`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    highlightedId.value = id
+    setTimeout(() => { highlightedId.value = null }, 1800)
   }
 }
 

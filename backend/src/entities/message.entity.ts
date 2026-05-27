@@ -27,6 +27,15 @@ export class Message {
   @Column({ type: 'bigint', default: 0 })
   fileSize: number;
 
+  @Column({ type: 'int', nullable: true })
+  replyToId: number;
+
+  @Column({ type: 'int', nullable: true })
+  replyToSenderId: number;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  replyToSnippet: string;
+
   @Column({ type: 'datetime', nullable: true })
   readAt: Date;
 

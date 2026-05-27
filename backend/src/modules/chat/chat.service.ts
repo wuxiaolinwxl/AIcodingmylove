@@ -18,8 +18,41 @@ export class ChatService {
     ossKey?: string;
     fileName?: string;
     fileSize?: number;
+    replyToId?: number;
   }) {
-    const msg = this.msgRepo.create(data);
+    let replyToId: number | null = null;
+    let replyToSenderId: number | null = null;
+    let replyToSnippet: string | null = null;
+
+    if (data.replyToId) {
+      const target = await this.msgRepo.findOne({ where: { id: data.replyToId } });
+      if (target && target.coupleId === data.coupleId) {
+        replyToId = target.id;
+        replyToSenderId = target.senderId;
+        if (target.msgType === 'text') {
+          const text = (target.content || '').replace(/\s+/g, ' ').trim();
+          replyToSnippet = text.length > 120 ? text.slice(0, 120) + '…' : text;
+        } else if (target.msgType === 'image') {
+          replyToSnippet = '[图片]';
+        } else if (target.msgType === 'file') {
+          const name = target.fileName || '文件';
+          replyToSnippet = `[文件:${name}]`;
+        }
+      }
+    }
+
+    const msg = this.msgRepo.create({
+      coupleId: data.coupleId,
+      senderId: data.senderId,
+      msgType: data.msgType,
+      content: data.content,
+      ossKey: data.ossKey,
+      fileName: data.fileName,
+      fileSize: data.fileSize,
+      replyToId: replyToId ?? undefined,
+      replyToSenderId: replyToSenderId ?? undefined,
+      replyToSnippet: replyToSnippet ?? undefined,
+    });
     return this.msgRepo.save(msg);
   }
 

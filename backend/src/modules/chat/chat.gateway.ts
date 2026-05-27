@@ -107,7 +107,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('message:send')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { msgType: 'text' | 'image' | 'file'; content?: string; ossKey?: string; fileName?: string; fileSize?: number },
+    @MessageBody() data: { msgType: 'text' | 'image' | 'file'; content?: string; ossKey?: string; fileName?: string; fileSize?: number; replyToId?: number },
   ) {
     const userId = (client as any).userId;
     const coupleId = (client as any).coupleId;
@@ -120,6 +120,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ossKey: data.ossKey,
       fileName: data.fileName,
       fileSize: data.fileSize,
+      replyToId: data.replyToId,
     });
 
     this.server.to(`couple_${coupleId}`).emit('message:new', msg);
