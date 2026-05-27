@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen bg-cream-50">
+  <div class="flex bg-cream-50 layout-shell">
     <!-- Desktop sidebar -->
     <aside class="hidden md:flex w-60 flex-col p-6 bg-white border-r border-cream-200">
       <div class="mb-8">
@@ -39,7 +39,10 @@
     </main>
 
     <!-- Mobile bottom tabs -->
-    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-cream-200 flex z-40">
+    <nav
+      class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-cream-200 flex z-40"
+      style="padding-bottom: env(safe-area-inset-bottom);"
+    >
       <router-link
         v-for="item in navItems"
         :key="item.path"
@@ -141,3 +144,16 @@ onBeforeUnmount(() => {
   stopTitleFlash()
 })
 </script>
+
+<style scoped>
+.layout-shell {
+  height: 100vh;
+  min-height: 100vh;
+}
+@supports (height: 100dvh) {
+  .layout-shell {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+</style>

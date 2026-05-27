@@ -1,7 +1,10 @@
 <template>
   <div class="flex flex-col h-full bg-cream-50">
     <!-- Header -->
-    <div class="bg-white border-b border-cream-200 px-4 py-3 flex items-center gap-3">
+    <div
+      class="bg-white border-b border-cream-200 px-4 py-3 flex items-center gap-3"
+      style="padding-top: calc(0.75rem + env(safe-area-inset-top));"
+    >
       <div class="w-9 h-9 rounded-full bg-cream-100 border border-cream-200 flex items-center justify-center text-sm font-medium text-ink-700">
         {{ partnerInitial }}
       </div>
@@ -70,84 +73,147 @@
         查看更早的消息
       </button>
 
-      <template v-for="(msg, idx) in messages" :key="msg.id">
+      <template v-for="cell in displayCells" :key="cell.key">
         <!-- Date separator -->
-        <div v-if="showDateSeparator(idx)" class="flex justify-center my-2">
+        <div v-if="cell.kind === 'date'" class="flex justify-center my-2">
           <span class="px-3 py-1 rounded-full bg-cream-100 text-ink-500 text-[11px]">
-            {{ formatDateLabel(msg.createdAt) }}
+            {{ formatDateLabel(cell.iso) }}
           </span>
         </div>
 
-        <!-- Message bubble -->
+        <!-- Image group bubble -->
         <div
-          :data-msg-id="msg.id"
+          v-else-if="cell.kind === 'image-group'"
+          :data-msg-id="cell.msgs[0].id"
           :class="['group/msg flex transition-shadow duration-300 rounded-2xl items-center gap-1',
-            msg.senderId === userStore.user?.id ? 'justify-end' : 'justify-start',
-            highlightedId === msg.id ? 'ring-2 ring-rose-300 ring-offset-2 ring-offset-cream-50' : '']"
+            cell.senderId === userStore.user?.id ? 'justify-end' : 'justify-start',
+            highlightedId === cell.msgs[0].id ? 'ring-2 ring-rose-300 ring-offset-2 ring-offset-cream-50' : '']"
         >
           <button
-            v-if="msg.senderId === userStore.user?.id"
-            @click="startReply(msg)"
+            v-if="cell.senderId === userStore.user?.id"
+            @click="startReply(cell.msgs[cell.msgs.length - 1])"
             class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
             title="引用回复"
           >
             <Reply :size="14" />
           </button>
           <div :class="[
-            'max-w-[75%] px-3.5 py-2 rounded-2xl',
-            msg.senderId === userStore.user?.id
+            'max-w-[78%] sm:max-w-[70%] p-2 rounded-2xl',
+            cell.senderId === userStore.user?.id
               ? 'bg-emerald-500 text-white rounded-br-md'
               : 'bg-pink-100 text-ink-900 rounded-bl-md border border-pink-200'
           ]">
-            <!-- Quoted reply -->
-            <button
-              v-if="msg.replyToSnippet"
-              @click="jumpToMessageId(msg.replyToId)"
-              :class="['w-full text-left mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs leading-snug truncate-2',
-                msg.senderId === userStore.user?.id
-                  ? 'bg-white/15 border-white/60 text-white/90 hover:bg-white/25'
-                  : 'bg-white/60 border-rose-300 text-ink-700 hover:bg-white']"
-            >
-              <span class="font-medium opacity-80">{{ quoteSenderName(msg.replyToSenderId) }}</span>
-              <span class="opacity-80">：</span>
-              <span class="opacity-90">{{ msg.replyToSnippet }}</span>
-            </button>
-            <!-- Text -->
-            <p v-if="msg.msgType === 'text'" class="whitespace-pre-wrap break-words leading-relaxed text-sm">{{ msg.content }}</p>
-            <!-- Image -->
-            <a v-else-if="msg.msgType === 'image'" :href="msg.ossKey || '#'" target="_blank" rel="noopener" class="block">
-              <img :src="msg.ossKey || ''" class="rounded-xl max-w-full max-h-72 cursor-pointer" />
-            </a>
-            <!-- File -->
-            <a
-              v-else-if="msg.msgType === 'file'"
-              :href="msg.ossKey || '#'"
-              :download="msg.fileName || 'download'"
-              target="_blank"
-              rel="noopener"
-              :class="['flex items-center gap-2 transition-opacity hover:opacity-90',
-                msg.senderId === userStore.user?.id ? 'text-white' : 'text-ink-900']"
-            >
-              <div :class="['w-9 h-9 rounded-lg flex items-center justify-center', msg.senderId === userStore.user?.id ? 'bg-white/20' : 'bg-pink-200']">
-                <Paperclip :size="16" />
-              </div>
-              <div class="min-w-0">
-                <p class="text-sm truncate underline-offset-2 hover:underline">{{ msg.fileName }}</p>
-                <p class="text-[10px] opacity-70">{{ formatSize(msg.fileSize) }} · 点击下载</p>
-              </div>
-            </a>
-            <!-- Time + read status -->
-            <div :class="['flex items-center gap-1 mt-1', msg.senderId === userStore.user?.id ? 'justify-end' : '']">
-              <span class="text-[10px] opacity-60">{{ formatTime(msg.createdAt) }}</span>
-              <template v-if="msg.senderId === userStore.user?.id">
-                <CheckCheck v-if="msg.readAt" :size="12" class="opacity-70" />
+            <div :class="['grid gap-1', imageGridClass(cell.msgs.length)]">
+              <button
+                v-for="(im, idx) in cell.msgs.slice(0, 4)"
+                :key="im.id"
+                type="button"
+                class="relative aspect-square overflow-hidden rounded-lg bg-black/10 focus:outline-none"
+                @click="openImage(im)"
+              >
+                <img :src="im.ossKey || ''" loading="lazy" class="w-full h-full object-cover" />
+                <div
+                  v-if="idx === 3 && cell.msgs.length > 4"
+                  class="absolute inset-0 bg-ink-900/55 flex items-center justify-center text-white text-base font-semibold"
+                >
+                  +{{ cell.msgs.length - 4 }}
+                </div>
+              </button>
+            </div>
+            <div :class="['flex items-center gap-1 mt-1', cell.senderId === userStore.user?.id ? 'justify-end' : '']">
+              <span class="text-[10px] opacity-60">{{ formatTime(cell.msgs[cell.msgs.length - 1].createdAt) }}</span>
+              <template v-if="cell.senderId === userStore.user?.id">
+                <CheckCheck v-if="cell.msgs[cell.msgs.length - 1].readAt" :size="12" class="opacity-70" />
                 <Check v-else :size="12" class="opacity-60" />
               </template>
             </div>
           </div>
           <button
-            v-if="msg.senderId !== userStore.user?.id"
-            @click="startReply(msg)"
+            v-if="cell.senderId !== userStore.user?.id"
+            @click="startReply(cell.msgs[cell.msgs.length - 1])"
+            class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
+            title="引用回复"
+          >
+            <Reply :size="14" />
+          </button>
+        </div>
+
+        <!-- Regular message bubble -->
+        <div
+          v-else
+          :data-msg-id="cell.msg.id"
+          :class="['group/msg flex transition-shadow duration-300 rounded-2xl items-center gap-1',
+            cell.msg.senderId === userStore.user?.id ? 'justify-end' : 'justify-start',
+            highlightedId === cell.msg.id ? 'ring-2 ring-rose-300 ring-offset-2 ring-offset-cream-50' : '']"
+        >
+          <button
+            v-if="cell.msg.senderId === userStore.user?.id"
+            @click="startReply(cell.msg)"
+            class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
+            title="引用回复"
+          >
+            <Reply :size="14" />
+          </button>
+          <div :class="[
+            'max-w-[78%] sm:max-w-[70%] px-3.5 py-2 rounded-2xl',
+            cell.msg.senderId === userStore.user?.id
+              ? 'bg-emerald-500 text-white rounded-br-md'
+              : 'bg-pink-100 text-ink-900 rounded-bl-md border border-pink-200'
+          ]">
+            <!-- Quoted reply -->
+            <button
+              v-if="cell.msg.replyToSnippet"
+              @click="jumpToMessageId(cell.msg.replyToId)"
+              :class="['w-full text-left mb-1.5 px-2 py-1 rounded-lg border-l-2 text-xs leading-snug truncate-2',
+                cell.msg.senderId === userStore.user?.id
+                  ? 'bg-white/15 border-white/60 text-white/90 hover:bg-white/25'
+                  : 'bg-white/60 border-rose-300 text-ink-700 hover:bg-white']"
+            >
+              <span class="font-medium opacity-80">{{ quoteSenderName(cell.msg.replyToSenderId) }}</span>
+              <span class="opacity-80">：</span>
+              <span class="opacity-90">{{ cell.msg.replyToSnippet }}</span>
+            </button>
+            <!-- Text -->
+            <p v-if="cell.msg.msgType === 'text'" class="whitespace-pre-wrap break-words leading-relaxed text-sm">{{ cell.msg.content }}</p>
+            <!-- Image (single) -->
+            <button
+              v-else-if="cell.msg.msgType === 'image'"
+              type="button"
+              class="block focus:outline-none"
+              @click="openImage(cell.msg)"
+            >
+              <img :src="cell.msg.ossKey || ''" loading="lazy" class="rounded-xl max-w-full max-h-72 cursor-pointer" />
+            </button>
+            <!-- File -->
+            <a
+              v-else-if="cell.msg.msgType === 'file'"
+              :href="cell.msg.ossKey || '#'"
+              :download="cell.msg.fileName || 'download'"
+              target="_blank"
+              rel="noopener"
+              :class="['flex items-center gap-2 transition-opacity hover:opacity-90',
+                cell.msg.senderId === userStore.user?.id ? 'text-white' : 'text-ink-900']"
+            >
+              <div :class="['w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', cell.msg.senderId === userStore.user?.id ? 'bg-white/20' : 'bg-pink-200']">
+                <Paperclip :size="16" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm truncate underline-offset-2 hover:underline">{{ cell.msg.fileName }}</p>
+                <p class="text-[10px] opacity-70">{{ formatSize(cell.msg.fileSize) }} · 点击下载</p>
+              </div>
+            </a>
+            <!-- Time + read status -->
+            <div :class="['flex items-center gap-1 mt-1', cell.msg.senderId === userStore.user?.id ? 'justify-end' : '']">
+              <span class="text-[10px] opacity-60">{{ formatTime(cell.msg.createdAt) }}</span>
+              <template v-if="cell.msg.senderId === userStore.user?.id">
+                <CheckCheck v-if="cell.msg.readAt" :size="12" class="opacity-70" />
+                <Check v-else :size="12" class="opacity-60" />
+              </template>
+            </div>
+          </div>
+          <button
+            v-if="cell.msg.senderId !== userStore.user?.id"
+            @click="startReply(cell.msg)"
             class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
             title="引用回复"
           >
@@ -167,7 +233,9 @@
     </div>
 
     <!-- Input area -->
-    <div class="bg-white border-t border-cream-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] mb-14 md:mb-0">
+    <div
+      class="bg-white border-t border-cream-200 px-3 sm:px-4 py-2.5 sm:py-3 chat-input-bar"
+    >
       <div v-if="replyTo" class="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-cream-100 border-l-2 border-rose-400">
         <Reply :size="14" class="text-rose-500 flex-shrink-0" />
         <div class="flex-1 min-w-0">
@@ -205,6 +273,12 @@
       <input ref="imageInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
       <input ref="fileInput" type="file" class="hidden" @change="handleFileUpload" />
     </div>
+
+    <ImageLightbox
+      v-model:show="lightbox.show"
+      v-model:index="lightbox.index"
+      :items="lightboxItems"
+    />
   </div>
 </template>
 
@@ -217,6 +291,7 @@ import { useCoupleStore } from '@/stores/couple'
 import { useChatStore } from '@/stores/chat'
 import { chatApi } from '@/api'
 import { uploadToOss } from '@/api/upload'
+import ImageLightbox from '@/components/ImageLightbox.vue'
 
 interface Msg {
   id: number
@@ -260,6 +335,90 @@ const partnerOnline = ref(false)
 const uploading = ref(false)
 const uploadFileName = ref('')
 const replyTo = ref<Msg | null>(null)
+
+const lightbox = ref({ show: false, index: 0 })
+
+const allImages = computed(() =>
+  messages.value
+    .filter((m) => m.msgType === 'image' && m.ossKey)
+    .map((m) => ({ msgId: m.id, src: m.ossKey as string, createdAt: m.createdAt })),
+)
+
+const lightboxItems = computed(() =>
+  allImages.value.map((im) => ({
+    src: im.src,
+    caption: formatSearchTime(im.createdAt),
+  })),
+)
+
+function openImage(msg: Msg) {
+  const idx = allImages.value.findIndex((im) => im.msgId === msg.id)
+  if (idx >= 0) {
+    lightbox.value = { show: true, index: idx }
+  }
+}
+
+function imageGridClass(count: number) {
+  if (count === 1) return 'grid-cols-1 w-44 sm:w-56'
+  if (count === 2) return 'grid-cols-2 w-44 sm:w-56'
+  if (count === 3) return 'grid-cols-3 w-56 sm:w-64'
+  return 'grid-cols-2 w-56 sm:w-64'
+}
+
+type DateCell = { kind: 'date'; key: string; iso: string }
+type SingleCell = { kind: 'single'; key: string; msg: Msg }
+type GroupCell = { kind: 'image-group'; key: string; senderId: number; msgs: Msg[] }
+type DisplayCell = DateCell | SingleCell | GroupCell
+
+function isPureImage(m: Msg) {
+  return m.msgType === 'image' && !m.replyToId
+}
+
+const displayCells = computed<DisplayCell[]>(() => {
+  const cells: DisplayCell[] = []
+  let lastDate = ''
+  let i = 0
+  while (i < messages.value.length) {
+    const m = messages.value[i]
+    const day = new Date(m.createdAt).toDateString()
+    if (day !== lastDate) {
+      cells.push({ kind: 'date', key: `d-${day}`, iso: m.createdAt })
+      lastDate = day
+    }
+    if (isPureImage(m)) {
+      const group: Msg[] = [m]
+      let j = i + 1
+      while (j < messages.value.length) {
+        const n = messages.value[j]
+        const sameDay = new Date(n.createdAt).toDateString() === day
+        if (
+          sameDay &&
+          n.senderId === m.senderId &&
+          isPureImage(n) &&
+          new Date(n.createdAt).getTime() - new Date(messages.value[j - 1].createdAt).getTime() < 5 * 60 * 1000
+        ) {
+          group.push(n)
+          j++
+        } else {
+          break
+        }
+      }
+      if (group.length >= 2) {
+        cells.push({
+          kind: 'image-group',
+          key: `g-${group[0].id}-${group.length}`,
+          senderId: m.senderId,
+          msgs: group,
+        })
+        i = j
+        continue
+      }
+    }
+    cells.push({ kind: 'single', key: `s-${m.id}`, msg: m })
+    i++
+  }
+  return cells
+})
 
 function startReply(msg: Msg) {
   replyTo.value = msg
@@ -329,6 +488,7 @@ function showDateSeparator(idx: number) {
   const prev = new Date(messages.value[idx - 1].createdAt).toDateString()
   return cur !== prev
 }
+void showDateSeparator
 
 function escapeHtml(str: string) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -551,3 +711,14 @@ onBeforeUnmount(() => {
   if (searchTimer) clearTimeout(searchTimer)
 })
 </script>
+
+<style scoped>
+.chat-input-bar {
+  padding-bottom: calc(0.625rem + 3.5rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .chat-input-bar {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+}
+</style>

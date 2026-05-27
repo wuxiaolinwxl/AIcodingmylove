@@ -96,24 +96,11 @@
     </div>
 
     <!-- Lightbox -->
-    <div v-if="lightbox.show" class="fixed inset-0 z-50 bg-ink-900/90 flex items-center justify-center" @click.self="closeLightbox">
-      <button @click="closeLightbox" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur flex items-center justify-center text-white">
-        <X :size="20" />
-      </button>
-      <div class="absolute top-4 left-4 px-3 py-1 rounded-full bg-white/10 backdrop-blur text-white text-sm">
-        {{ lightbox.index + 1 }} / {{ lightbox.items.length }}
-      </div>
-      <button v-if="lightbox.index > 0" @click="lightbox.index--" class="absolute left-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur flex items-center justify-center text-white">
-        <ChevronLeft :size="22" />
-      </button>
-      <button v-if="lightbox.index < lightbox.items.length - 1" @click="lightbox.index++" class="absolute right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur flex items-center justify-center text-white">
-        <ChevronRight :size="22" />
-      </button>
-      <img :src="lightbox.items[lightbox.index]?.ossUrl" class="max-w-[92vw] max-h-[82vh] rounded-xl object-contain" />
-      <div v-if="lightbox.items[lightbox.index]" class="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/10 backdrop-blur text-white text-sm">
-        {{ lightbox.items[lightbox.index].title || '' }} · {{ formatDate(lightbox.items[lightbox.index].memoryDate) }}
-      </div>
-    </div>
+    <ImageLightbox
+      v-model:show="lightbox.show"
+      v-model:index="lightbox.index"
+      :items="lightboxItems"
+    />
 
     <!-- Upload dialog -->
     <UploadDialog v-model="showUpload" @created="onCreated" />
@@ -121,13 +108,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Plus, Search, Loader2, Sparkles, X, ChevronLeft, ChevronRight, Layers, Image, Video, Music, FileText, Paperclip } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { Plus, Search, Loader2, Sparkles, Layers, Image, Video, Music, FileText, Paperclip } from 'lucide-vue-next'
 import { memoryApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import MemoryCard from '@/components/MemoryCard.vue'
 import PhotoAlbumCard from '@/components/PhotoAlbumCard.vue'
 import UploadDialog from '@/components/UploadDialog.vue'
+import ImageLightbox from '@/components/ImageLightbox.vue'
 
 interface MemoryItem {
   id: number
@@ -168,6 +156,13 @@ const typeFilters = [
 ]
 
 const lightbox = ref({ show: false, items: [] as MemoryItem[], index: 0 })
+
+const lightboxItems = computed(() =>
+  lightbox.value.items.map((it) => ({
+    src: it.ossUrl || '',
+    caption: [it.title, formatDate(it.memoryDate)].filter(Boolean).join(' · '),
+  })),
+)
 
 const monthGroups = computed(() => {
   const monthMap = new Map<string, MemoryItem[]>()
@@ -262,28 +257,12 @@ function openLightbox(photos: MemoryItem[], index: number) {
   lightbox.value = { show: true, items: photos, index }
 }
 
-function closeLightbox() {
-  lightbox.value.show = false
-}
-
 function onCreated() {
   showUpload.value = false
   reload()
 }
 
-function handleKeydown(e: KeyboardEvent) {
-  if (!lightbox.value.show) return
-  if (e.key === 'Escape') closeLightbox()
-  if (e.key === 'ArrowLeft' && lightbox.value.index > 0) lightbox.value.index--
-  if (e.key === 'ArrowRight' && lightbox.value.index < lightbox.value.items.length - 1) lightbox.value.index++
-}
-
 onMounted(() => {
   fetchList(1)
-  window.addEventListener('keydown', handleKeydown)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
