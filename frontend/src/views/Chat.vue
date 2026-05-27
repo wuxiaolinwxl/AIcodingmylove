@@ -250,7 +250,13 @@
         <Loader2 :size="14" class="animate-spin" />
         <span>正在上传 {{ uploadFileName }}...</span>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="relative flex items-center gap-2">
+        <div v-if="showEmoji" ref="emojiPanelEl" class="absolute left-0 right-0 sm:right-auto sm:w-[22rem] bottom-full mb-2 z-30">
+          <EmojiPicker @pick="onPickEmoji" />
+        </div>
+        <button @click="toggleEmoji" data-emoji-toggle :class="['btn-icon', showEmoji ? '!bg-cream-100' : '']">
+          <Smile :size="20" />
+        </button>
         <button @click="triggerImage" class="btn-icon">
           <ImagePlus :size="20" />
         </button>
@@ -284,7 +290,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
-import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply } from 'lucide-vue-next'
+import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply, Smile } from 'lucide-vue-next'
 import { io, Socket } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
@@ -292,6 +298,7 @@ import { useChatStore } from '@/stores/chat'
 import { chatApi } from '@/api'
 import { uploadToOss } from '@/api/upload'
 import ImageLightbox from '@/components/ImageLightbox.vue'
+import EmojiPicker from '@/components/EmojiPicker.vue'
 
 interface Msg {
   id: number
@@ -335,6 +342,42 @@ const partnerOnline = ref(false)
 const uploading = ref(false)
 const uploadFileName = ref('')
 const replyTo = ref<Msg | null>(null)
+const showEmoji = ref(false)
+const emojiPanelEl = ref<HTMLDivElement>()
+
+function toggleEmoji() {
+  showEmoji.value = !showEmoji.value
+  if (showEmoji.value) {
+    inputEl.value?.blur()
+  }
+}
+
+function onPickEmoji(emoji: string) {
+  const ta = inputEl.value
+  if (!ta) {
+    inputText.value += emoji
+    return
+  }
+  const start = ta.selectionStart ?? inputText.value.length
+  const end = ta.selectionEnd ?? inputText.value.length
+  const before = inputText.value.slice(0, start)
+  const after = inputText.value.slice(end)
+  inputText.value = before + emoji + after
+  nextTick(() => {
+    ta.focus()
+    const pos = before.length + emoji.length
+    ta.setSelectionRange(pos, pos)
+  })
+}
+
+function handleDocClick(e: MouseEvent) {
+  if (!showEmoji.value) return
+  const t = e.target as Node
+  if (emojiPanelEl.value?.contains(t)) return
+  const triggerBtn = (e.target as HTMLElement).closest('[data-emoji-toggle]')
+  if (triggerBtn) return
+  showEmoji.value = false
+}
 
 const lightbox = ref({ show: false, index: 0 })
 
@@ -596,6 +639,7 @@ function sendText() {
   })
   inputText.value = ''
   replyTo.value = null
+  showEmoji.value = false
   typingSent = false
 }
 
@@ -703,12 +747,14 @@ onMounted(async () => {
   }
   loadHistory()
   setupSocket()
+  document.addEventListener('click', handleDocClick)
 })
 
 onBeforeUnmount(() => {
   socket?.disconnect()
   if (typingTimer) clearTimeout(typingTimer)
   if (searchTimer) clearTimeout(searchTimer)
+  document.removeEventListener('click', handleDocClick)
 })
 </script>
 
