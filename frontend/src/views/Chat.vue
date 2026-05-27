@@ -312,8 +312,20 @@ function setupSocket() {
     path: '/socket.io',
   })
 
-  socket.on('connected', () => {
-    partnerOnline.value = true
+  socket.on('connected', (payload: { userId: number; coupleId: number; online: number[] }) => {
+    const partnerId = partner.value?.id
+    if (partnerId && Array.isArray(payload.online)) {
+      partnerOnline.value = payload.online.includes(partnerId)
+    } else {
+      partnerOnline.value = false
+    }
+  })
+
+  socket.on('presence', (payload: { userId: number; online: boolean }) => {
+    const partnerId = partner.value?.id
+    if (partnerId && payload.userId === partnerId) {
+      partnerOnline.value = payload.online
+    }
   })
 
   socket.on('message:new', (msg: Msg) => {
@@ -426,7 +438,10 @@ watch(searchQuery, (q) => {
   }, 280)
 })
 
-onMounted(() => {
+onMounted(async () => {
+  if (!coupleStore.info) {
+    await coupleStore.fetchInfo()
+  }
   loadHistory()
   setupSocket()
 })
