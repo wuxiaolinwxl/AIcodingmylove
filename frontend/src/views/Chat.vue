@@ -175,6 +175,7 @@ import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, 
 import { io, Socket } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
+import { useChatStore } from '@/stores/chat'
 import { chatApi } from '@/api'
 import { uploadToOss } from '@/api/upload'
 
@@ -193,6 +194,7 @@ interface Msg {
 
 const userStore = useUserStore()
 const coupleStore = useCoupleStore()
+const chatStore = useChatStore()
 
 const messages = ref<Msg[]>([])
 const inputText = ref('')
@@ -287,6 +289,7 @@ async function loadHistory() {
     messages.value = data
     hasMoreHistory.value = data.length === 30
     scrollToBottom()
+    chatStore.clear()
   } finally {
     loading.value = false
   }
@@ -333,6 +336,7 @@ function setupSocket() {
     scrollToBottom()
     if (msg.senderId !== userStore.user?.id) {
       socket?.emit('read')
+      chatStore.clear()
     }
   })
 

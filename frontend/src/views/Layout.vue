@@ -16,11 +16,15 @@
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          :class="['flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+          :class="['relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
             isActive(item.path) ? 'bg-cream-100 text-ink-900' : 'text-ink-700 hover:bg-cream-50']"
         >
           <component :is="item.icon" :size="18" :class="isActive(item.path) ? 'text-rose-500' : ''" />
-          {{ item.label }}
+          <span class="flex-1">{{ item.label }}</span>
+          <span
+            v-if="item.path === '/chat' && chatStore.unread > 0"
+            class="min-w-[18px] h-[18px] px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-semibold flex items-center justify-center"
+          >{{ chatStore.unread > 99 ? '99+' : chatStore.unread }}</span>
         </router-link>
       </nav>
 
@@ -40,10 +44,16 @@
         v-for="item in navItems"
         :key="item.path"
         :to="item.path"
-        :class="['flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors',
+        :class="['relative flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors',
           isActive(item.path) ? 'text-rose-500' : 'text-ink-500']"
       >
-        <component :is="item.icon" :size="20" :stroke-width="isActive(item.path) ? 2.2 : 1.8" />
+        <div class="relative">
+          <component :is="item.icon" :size="20" :stroke-width="isActive(item.path) ? 2.2 : 1.8" />
+          <span
+            v-if="item.path === '/chat' && chatStore.unread > 0"
+            class="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-semibold flex items-center justify-center"
+          >{{ chatStore.unread > 99 ? '99+' : chatStore.unread }}</span>
+        </div>
         {{ item.label }}
       </router-link>
     </nav>
@@ -51,13 +61,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
+import { io, Socket } from 'socket.io-client'
 import { Clock, MessageCircle, User, Heart } from 'lucide-vue-next'
 import { useCoupleStore } from '@/stores/couple'
+import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
 
 const route = useRoute()
 const coupleStore = useCoupleStore()
+const userStore = useUserStore()
+const chatStore = useChatStore()
+
+let socket: Socket | null = null
 
 const navItems = [
   { path: '/timeline', label: '时间轴', icon: Clock },
@@ -76,9 +93,30 @@ const daysCount = computed(() => {
   return Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
 })
 
+function setupBadgeSocket() {
+  if (!userStore.token) return
+  socket = io(`${location.protocol}//${location.host}/chat`, {
+    transports: ['websocket', 'polling'],
+    auth: { token: userStore.token },
+    path: '/socket.io',
+  })
+
+  socket.on('message:new', (msg: { senderId: number }) => {
+    if (msg.senderId === userStore.user?.id) return
+    if (route.path === '/chat') return
+    chatStore.increment(1)
+  })
+}
+
 onMounted(async () => {
   if (!coupleStore.info) {
     await coupleStore.fetchInfo()
   }
+  chatStore.fetchUnread()
+  setupBadgeSocket()
+})
+
+onBeforeUnmount(() => {
+  socket?.disconnect()
 })
 </script>

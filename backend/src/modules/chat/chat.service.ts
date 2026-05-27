@@ -66,4 +66,14 @@ export class ChatService {
       .andWhere('readAt IS NULL')
       .execute();
   }
+
+  async unreadCount(coupleId: number, userId: number) {
+    const count = await this.msgRepo
+      .createQueryBuilder('m')
+      .where('m.coupleId = :coupleId', { coupleId })
+      .andWhere('m.senderId != :userId', { userId })
+      .andWhere('m.readAt IS NULL')
+      .getCount();
+    return { count };
+  }
 }

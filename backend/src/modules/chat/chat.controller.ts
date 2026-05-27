@@ -9,6 +9,11 @@ import { CurrentUser } from '../../common/current-user.decorator';
 export class ChatController {
   constructor(private chatService: ChatService) {}
 
+  @Get('unread')
+  unread(@CurrentUser() user: any) {
+    return this.chatService.unreadCount(user.coupleId, user.id);
+  }
+
   @Get('search')
   search(@CurrentUser() user: any, @Query() query: { q: string; page?: number; pageSize?: number }) {
     return this.chatService.search(user.coupleId, query.q, Number(query.page) || 1, Number(query.pageSize) || 20);

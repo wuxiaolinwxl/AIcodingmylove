@@ -30,6 +30,8 @@ export const chatApi = {
     http.get('/messages', { params: { before, limit } }).then((r) => r.data),
   search: (q: string, page = 1, pageSize = 20) =>
     http.get('/messages/search', { params: { q, page, pageSize } }).then((r) => r.data),
+  unread: () =>
+    http.get<{ count: number }>('/messages/unread').then((r) => r.data),
 }
 
 export const ossApi = {
