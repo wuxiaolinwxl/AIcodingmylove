@@ -7,14 +7,6 @@ const MOCK_USER = {
   coupleId: 1,
 }
 
-const MOCK_PARTNER = {
-  id: 2,
-  username: 'xiaohong',
-  nickname: '小红',
-  email: null,
-  avatarUrl: null,
-}
-
 const MOCK_COUPLE = {
   id: 1,
   spaceName: '小明 & 小红',

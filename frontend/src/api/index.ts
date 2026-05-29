@@ -8,6 +8,15 @@ export const authApi = {
   me: () => http.get('/auth/me').then((r) => r.data),
 }
 
+export const userApi = {
+  updateMe: (data: {
+    nickname?: string
+    solarBirthday?: string | null
+    lunarBirthday?: string | null
+    lunarIsLeap?: boolean
+  }) => http.patch('/user/me', data).then((r) => r.data),
+}
+
 export const coupleApi = {
   invite: () => http.post('/couple/invite').then((r) => r.data),
   accept: (code: string) => http.post('/couple/accept', { code }).then((r) => r.data),

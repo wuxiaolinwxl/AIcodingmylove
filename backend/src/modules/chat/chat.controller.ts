@@ -11,7 +11,7 @@ export class ChatController {
 
   @Get('unread')
   unread(@CurrentUser() user: any) {
-    return this.chatService.unreadCount(user.coupleId, user.id);
+    return this.chatService.unreadCount(user.coupleId, user.userId);
   }
 
   @Get('search')

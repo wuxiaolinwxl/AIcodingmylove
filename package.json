@@ -5,9 +5,23 @@
     "dev:backend": "pnpm --filter backend dev",
     "dev:frontend": "pnpm --filter frontend dev",
     "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\"",
-    "build": "pnpm --filter backend build && pnpm --filter frontend build"
+    "build": "pnpm --filter backend build && pnpm --filter frontend build",
+    "lint": "eslint . --ext .ts,.tsx,.vue,.js,.cjs",
+    "lint:fix": "eslint . --ext .ts,.tsx,.vue,.js,.cjs --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,vue,js,cjs,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,vue,js,cjs,json,md,yml,yaml}\"",
+    "typecheck": "pnpm --filter backend exec tsc --noEmit && pnpm --filter frontend exec vue-tsc --noEmit",
+    "icons": "node scripts/build-icons.cjs"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "prettier": "^3.3.3",
+    "sharp": "^0.34.5",
+    "vue-eslint-parser": "^9.4.3"
   }
 }

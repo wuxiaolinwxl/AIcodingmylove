@@ -17,9 +17,13 @@ import { PushModule } from '../push/push.module';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET', 'default_secret'),
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET is not set. Refusing to start with an insecure default.');
+        }
+        return { secret };
+      },
     }),
   ],
   controllers: [ChatController],

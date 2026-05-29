@@ -66,7 +66,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { io, Socket } from 'socket.io-client'
 import { Clock, MessageCircle, User, Heart } from 'lucide-vue-next'
 import { useCoupleStore } from '@/stores/couple'
 import { useUserStore } from '@/stores/user'
@@ -77,8 +76,6 @@ const route = useRoute()
 const coupleStore = useCoupleStore()
 const userStore = useUserStore()
 const chatStore = useChatStore()
-
-let socket: Socket | null = null
 
 const navItems = [
   { path: '/timeline', label: '时间轴', icon: Clock },
@@ -114,20 +111,18 @@ function previewOf(msg: IncomingMsg): string {
   return ''
 }
 
+const onMessageNew = (msg: IncomingMsg) => {
+  if (msg.senderId === userStore.user?.id) return
+  const onChat = route.path === '/chat'
+  if (!onChat) chatStore.increment(1)
+  notifyNewMessage({ preview: previewOf(msg) })
+}
+
 function setupBadgeSocket() {
   if (!userStore.token) return
-  socket = io(`${location.protocol}//${location.host}/chat`, {
-    transports: ['websocket', 'polling'],
-    auth: { token: userStore.token },
-    path: '/socket.io',
-  })
-
-  socket.on('message:new', (msg: IncomingMsg) => {
-    if (msg.senderId === userStore.user?.id) return
-    const onChat = route.path === '/chat'
-    if (!onChat) chatStore.increment(1)
-    notifyNewMessage({ preview: previewOf(msg) })
-  })
+  const s = chatStore.connect(userStore.token)
+  s.off('message:new', onMessageNew)
+  s.on('message:new', onMessageNew)
 }
 
 onMounted(async () => {
@@ -140,7 +135,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  socket?.disconnect()
+  chatStore.socket?.off('message:new', onMessageNew)
   stopTitleFlash()
 })
 </script>

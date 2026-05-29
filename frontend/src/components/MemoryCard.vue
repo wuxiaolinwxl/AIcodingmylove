@@ -14,7 +14,13 @@
 
     <!-- Photo -->
     <div v-if="item.type === 'photo'" class="rounded-xl overflow-hidden bg-cream-100 mb-3">
-      <img :src="item.ossUrl || ''" :alt="item.title || ''" class="w-full h-auto" loading="lazy" />
+      <SafeImage
+        :src="item.ossUrl"
+        :alt="item.title || ''"
+        loading="lazy"
+        wrapper-class="relative w-full aspect-[4/3]"
+        img-class="w-full h-full object-cover"
+      />
     </div>
 
     <!-- Video -->
@@ -106,6 +112,7 @@ import { computed, ref } from 'vue'
 import { Image, Video, Music, FileText, Quote, Trash2, ChevronDown, ChevronUp, Paperclip, Download } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
+import SafeImage from '@/components/SafeImage.vue'
 
 const props = defineProps<{
   item: {

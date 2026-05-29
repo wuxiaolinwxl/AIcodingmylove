@@ -3,6 +3,7 @@ import { CoupleService } from './couple.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CoupleGuard } from '../../common/couple.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
+import { AcceptInviteDto, UpdateCoupleInfoDto } from './dto/couple.dto';
 
 @Controller('couple')
 @UseGuards(JwtAuthGuard)
@@ -15,7 +16,7 @@ export class CoupleController {
   }
 
   @Post('accept')
-  acceptInvite(@CurrentUser() user: any, @Body() body: { code: string }) {
+  acceptInvite(@CurrentUser() user: any, @Body() body: AcceptInviteDto) {
     return this.coupleService.acceptInvite(user.userId, body.code);
   }
 
@@ -27,7 +28,7 @@ export class CoupleController {
 
   @Patch('info')
   @UseGuards(CoupleGuard)
-  updateInfo(@CurrentUser() user: any, @Body() body: { spaceName?: string; anniversaryDate?: string }) {
+  updateInfo(@CurrentUser() user: any, @Body() body: UpdateCoupleInfoDto) {
     return this.coupleService.updateInfo(user.coupleId, body);
   }
 }

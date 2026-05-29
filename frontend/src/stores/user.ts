@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { authApi } from '@/api'
+import { authApi, userApi } from '@/api'
+import { useChatStore } from '@/stores/chat'
 
 export interface UserInfo {
   id: number
@@ -9,6 +10,9 @@ export interface UserInfo {
   email: string | null
   avatarUrl: string | null
   coupleId: number | null
+  solarBirthday: string | null
+  lunarBirthday: string | null
+  lunarIsLeap: boolean
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -32,7 +36,10 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function register(data: { username: string; password: string; email?: string; nickname?: string }) {
-    const payload: Record<string, string> = { username: data.username, password: data.password }
+    const payload: { username: string; password: string; email?: string; nickname?: string } = {
+      username: data.username,
+      password: data.password,
+    }
     if (data.email) payload.email = data.email
     if (data.nickname) payload.nickname = data.nickname
     const res = await authApi.register(payload)
@@ -51,11 +58,23 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function updateProfile(data: {
+    nickname?: string
+    solarBirthday?: string | null
+    lunarBirthday?: string | null
+    lunarIsLeap?: boolean
+  }) {
+    const u = await userApi.updateMe(data)
+    user.value = u
+    return u
+  }
+
   function logout() {
     token.value = ''
     user.value = null
     localStorage.removeItem('ms_token')
+    try { useChatStore().disconnect() } catch { /* ignore */ }
   }
 
-  return { token, user, loading, isLoggedIn, isBound, setAuth, login, register, fetchMe, logout }
+  return { token, user, loading, isLoggedIn, isBound, setAuth, login, register, fetchMe, updateProfile, logout }
 })

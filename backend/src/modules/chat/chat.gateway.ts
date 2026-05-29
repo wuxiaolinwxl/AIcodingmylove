@@ -18,7 +18,10 @@ import { PushService } from '../push/push.service';
 
 @WebSocketGateway({
   namespace: '/chat',
-  cors: { origin: '*', credentials: true },
+  cors: {
+    origin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(','),
+    credentials: true,
+  },
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -74,7 +77,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth?.token || client.handshake.query?.token;
+      const token = client.handshake.auth?.token;
       if (!token) throw new Error('No token');
 
       const payload = this.jwtService.verify(token as string);

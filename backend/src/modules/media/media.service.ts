@@ -1,18 +1,24 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Memory } from '../../entities/memory.entity';
+import { CreateMemoryDto } from './dto/create-memory.dto';
+import { ListMemoriesDto } from './dto/list-memories.dto';
+import { OssService } from '../oss/oss.service';
 
 const MAX_PAGE_SIZE = 100;
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+
   constructor(
     @InjectRepository(Memory)
     private memoryRepo: Repository<Memory>,
+    private ossService: OssService,
   ) {}
 
-  async create(coupleId: number, uploaderId: number, dto: any) {
+  async create(coupleId: number, uploaderId: number, dto: CreateMemoryDto) {
     const memory = this.memoryRepo.create({
       coupleId,
       uploaderId,
@@ -24,12 +30,12 @@ export class MediaService {
       ossUrl: dto.ossUrl,
       coverUrl: dto.coverUrl,
       fileSize: dto.fileSize || 0,
-      memoryDate: dto.memoryDate,
+      memoryDate: new Date(dto.memoryDate),
     });
     return this.memoryRepo.save(memory);
   }
 
-  async list(coupleId: number, query: any) {
+  async list(coupleId: number, query: ListMemoriesDto) {
     const { type, start, end, keyword } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(query.pageSize) || 20));
@@ -103,7 +109,15 @@ export class MediaService {
     if (memory.uploaderId !== userId) {
       throw new ForbiddenException('只能删除自己上传的记忆');
     }
+    const ossKey = memory.ossKey;
     await this.memoryRepo.remove(memory);
+    if (ossKey) {
+      try {
+        await this.ossService.deleteByKey(ossKey);
+      } catch (e) {
+        this.logger.warn(`Failed to delete upload file for memory ${id}: ${(e as Error).message}`);
+      }
+    }
     return { success: true };
   }
 }

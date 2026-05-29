@@ -23,6 +23,15 @@ export class User {
   @Column({ type: 'int', nullable: true })
   coupleId: number;
 
+  @Column({ type: 'date', nullable: true })
+  solarBirthday: string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  lunarBirthday: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  lunarIsLeap: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

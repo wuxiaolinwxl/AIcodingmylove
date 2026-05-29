@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { CoupleModule } from './modules/couple/couple.module';
@@ -18,6 +20,9 @@ import { PushSubscription } from './entities/push-subscription.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60_000, limit: 120 },
+    ]),
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST || '127.0.0.1',
@@ -26,7 +31,7 @@ import { PushSubscription } from './entities/push-subscription.entity';
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'memory_space',
       entities: [User, Couple, Invitation, Memory, Message, PushSubscription],
-      synchronize: true,
+      synchronize: process.env.DB_SYNCHRONIZE === 'true',
       charset: 'utf8mb4',
       timezone: '+08:00',
     }),
@@ -37,6 +42,9 @@ import { PushSubscription } from './entities/push-subscription.entity';
     ChatModule,
     OssModule,
     PushModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

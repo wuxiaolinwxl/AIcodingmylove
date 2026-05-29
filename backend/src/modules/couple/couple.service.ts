@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { DataSource, Repository, MoreThan } from 'typeorm';
 import { Couple } from '../../entities/couple.entity';
 import { Invitation } from '../../entities/invitation.entity';
 import { User } from '../../entities/user.entity';
@@ -17,6 +17,7 @@ export class CoupleService {
     private invitationRepo: Repository<Invitation>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    private dataSource: DataSource,
   ) {}
 
   async createInvite(userId: number) {
@@ -50,45 +51,51 @@ export class CoupleService {
   }
 
   async acceptInvite(userId: number, code: string) {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('用户不存在');
-    if (user.coupleId) {
-      throw new ConflictException('你已经绑定了伴侣');
-    }
+    const coupleId = await this.dataSource.transaction(async (manager) => {
+      const userRepo = manager.getRepository(User);
+      const inviteRepo = manager.getRepository(Invitation);
+      const coupleRepo = manager.getRepository(Couple);
 
-    const invitation = await this.invitationRepo.findOne({
-      where: { code, status: 'pending' },
+      const user = await userRepo.findOne({ where: { id: userId }, lock: { mode: 'pessimistic_write' } });
+      if (!user) throw new NotFoundException('用户不存在');
+      if (user.coupleId) throw new ConflictException('你已经绑定了伴侣');
+
+      const invitation = await inviteRepo.findOne({
+        where: { code, status: 'pending' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!invitation) throw new BadRequestException('邀请码无效');
+      if (invitation.expiresAt < new Date()) {
+        await inviteRepo.update(invitation.id, { status: 'expired' });
+        throw new BadRequestException('邀请码已过期');
+      }
+      if (invitation.inviterId === userId) {
+        throw new BadRequestException('不能接受自己的邀请码');
+      }
+
+      const inviter = await userRepo.findOne({
+        where: { id: invitation.inviterId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!inviter) throw new NotFoundException('邀请人不存在');
+      if (inviter.coupleId) throw new ConflictException('对方已经绑定了伴侣');
+
+      const spaceName = `${inviter.nickname || inviter.username} & ${user.nickname || user.username}`.slice(0, 60);
+      const couple = coupleRepo.create({
+        userAId: invitation.inviterId,
+        userBId: userId,
+        spaceName,
+      });
+      const saved = (await coupleRepo.save(couple)) as Couple;
+
+      await userRepo.update(invitation.inviterId, { coupleId: saved.id });
+      await userRepo.update(userId, { coupleId: saved.id });
+      await inviteRepo.update(invitation.id, { status: 'used', usedBy: userId });
+
+      return saved.id;
     });
-    if (!invitation) {
-      throw new BadRequestException('邀请码无效');
-    }
-    if (invitation.expiresAt < new Date()) {
-      await this.invitationRepo.update(invitation.id, { status: 'expired' });
-      throw new BadRequestException('邀请码已过期');
-    }
-    if (invitation.inviterId === userId) {
-      throw new BadRequestException('不能接受自己的邀请码');
-    }
 
-    const inviter = await this.userRepo.findOne({ where: { id: invitation.inviterId } });
-    if (!inviter) throw new NotFoundException('邀请人不存在');
-    if (inviter.coupleId) {
-      throw new ConflictException('对方已经绑定了伴侣');
-    }
-
-    const spaceName = `${inviter.nickname || inviter.username} & ${user.nickname || user.username}`;
-    const couple = this.coupleRepo.create({
-      userAId: invitation.inviterId,
-      userBId: userId,
-      spaceName,
-    });
-    const saved = await this.coupleRepo.save(couple) as Couple;
-
-    await this.userRepo.update(invitation.inviterId, { coupleId: saved.id });
-    await this.userRepo.update(userId, { coupleId: saved.id });
-    await this.invitationRepo.update(invitation.id, { status: 'used', usedBy: userId });
-
-    return this.getInfo(saved.id);
+    return this.getInfo(coupleId);
   }
 
   async getInfo(coupleId: number) {

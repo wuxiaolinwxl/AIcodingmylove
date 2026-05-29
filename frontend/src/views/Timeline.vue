@@ -111,7 +111,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { Plus, Search, Loader2, Sparkles, Layers, Image, Video, Music, FileText, Paperclip } from 'lucide-vue-next'
 import { memoryApi } from '@/api'
-import { useUserStore } from '@/stores/user'
 import MemoryCard from '@/components/MemoryCard.vue'
 import PhotoAlbumCard from '@/components/PhotoAlbumCard.vue'
 import UploadDialog from '@/components/UploadDialog.vue'
@@ -136,7 +135,6 @@ type Unit =
   | { kind: 'single'; key: string; item: MemoryItem }
   | { kind: 'album'; key: string; day: string; items: MemoryItem[] }
 
-const userStore = useUserStore()
 const items = ref<MemoryItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -253,8 +251,8 @@ async function handleRemove(id: number) {
   total.value--
 }
 
-function openLightbox(photos: MemoryItem[], index: number) {
-  lightbox.value = { show: true, items: photos, index }
+function openLightbox(photos: unknown[], index: number) {
+  lightbox.value = { show: true, items: photos as MemoryItem[], index }
 }
 
 function onCreated() {

@@ -86,6 +86,45 @@
         </div>
       </div>
 
+      <!-- Birthday card -->
+      <div class="card !p-5 mb-4">
+        <div class="flex items-center gap-2 mb-4">
+          <Cake :size="16" class="text-ink-500" />
+          <h3 class="text-sm font-bold text-ink-900">我的生日</h3>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs text-ink-500 mb-1 block">新历生日</label>
+            <input v-model="birthdayForm.solarBirthday" type="date" class="input" />
+          </div>
+          <div>
+            <label class="text-xs text-ink-500 mb-1 block">农历生日</label>
+            <div class="grid grid-cols-3 gap-2">
+              <select v-model.number="lunarYear" class="input">
+                <option :value="0">年</option>
+                <option v-for="y in lunarYearOptions" :key="y" :value="y">{{ y }}</option>
+              </select>
+              <select v-model.number="lunarMonth" class="input">
+                <option :value="0">月</option>
+                <option v-for="m in 12" :key="m" :value="m">{{ m }} 月</option>
+              </select>
+              <select v-model.number="lunarDay" class="input">
+                <option :value="0">日</option>
+                <option v-for="d in 30" :key="d" :value="d">{{ d }} 日</option>
+              </select>
+            </div>
+            <label class="inline-flex items-center gap-2 mt-2 text-xs text-ink-600">
+              <input v-model="birthdayForm.lunarIsLeap" type="checkbox" class="rounded" />
+              <span>闰月</span>
+            </label>
+          </div>
+          <button @click="saveBirthday" class="btn-primary w-full" :disabled="birthdaySaving">
+            <Loader2 v-if="birthdaySaving" :size="14" class="animate-spin" />
+            {{ birthdaySaving ? '保存中...' : '保存生日' }}
+          </button>
+        </div>
+      </div>
+
       <!-- Notification settings -->
       <div class="card !p-5 mb-4">
         <div class="flex items-center gap-2 mb-3">
@@ -93,14 +132,32 @@
           <h3 class="text-sm font-bold text-ink-900">消息提醒</h3>
         </div>
         <p class="text-xs text-ink-500 mb-3">开启后，TA 给你发消息时即使应用没打开也会收到通知。</p>
-        <div v-if="!pushSupported" class="text-xs text-rose-500 mb-3">当前浏览器不支持 Web 推送。建议把网页"添加到主屏幕"再试。</div>
-        <div v-else-if="!isHttps" class="text-xs text-rose-500 mb-3">推送需要 HTTPS（或 localhost），当前为 HTTP 环境。</div>
+
+        <!-- iOS 需要"添加到主屏幕"才能推送 -->
+        <div v-if="iosNeedsInstall" class="bg-rose-50 border border-rose-100 rounded-lg p-3 mb-3 text-xs text-ink-700 leading-relaxed">
+          <p class="font-semibold text-rose-600 mb-1.5">苹果手机需要"添加到主屏幕"才能接收推送</p>
+          <ol class="list-decimal list-inside space-y-1 text-ink-700">
+            <li>点击 Safari 底部的「分享」按钮 <Share :size="12" class="inline -mt-0.5" /></li>
+            <li>在弹出菜单中选择「添加到主屏幕」</li>
+            <li>从主屏幕图标启动后，再回到这里开启提醒</li>
+          </ol>
+        </div>
+        <div v-else-if="iosTooOld" class="text-xs text-rose-500 mb-3">
+          苹果设备需要 iOS 16.4 或更新版本才能接收推送。
+        </div>
+        <div v-else-if="!pushSupported" class="text-xs text-rose-500 mb-3">
+          当前浏览器不支持 Web 推送。
+        </div>
+        <div v-else-if="!isHttps" class="text-xs text-rose-500 mb-3">
+          推送需要 HTTPS（或 localhost），当前为 HTTP 环境。
+        </div>
+
         <div class="flex items-center justify-between">
           <span :class="['text-sm', pushEnabled ? 'text-emerald-600' : 'text-ink-700']">
             {{ pushStatusLabel }}
           </span>
           <button
-            v-if="!pushEnabled"
+            v-if="!pushEnabled && !iosNeedsInstall && !iosTooOld"
             @click="enablePush"
             class="btn-primary !py-1.5 !px-3 text-xs"
             :disabled="pushBusy || !pushSupported || !isHttps"
@@ -109,7 +166,7 @@
             {{ pushBusy ? '处理中...' : '开启提醒' }}
           </button>
           <button
-            v-else
+            v-else-if="pushEnabled"
             @click="disablePush"
             class="btn-ghost !py-1.5 !px-3 text-xs"
             :disabled="pushBusy"
@@ -139,24 +196,65 @@
         </button>
       </div>
     </div>
+
+    <ConfirmDialog
+      v-model:show="logoutDialog"
+      title="退出登录"
+      message="确定退出登录吗？"
+      confirm-text="退出"
+      cancel-text="取消"
+      @confirm="doLogout"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2, Bell } from 'lucide-vue-next'
+import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2, Bell, Share, Cake } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
 import { memoryApi } from '@/api'
-import { isPushSupported, getCurrentPushSubscription, subscribePush, unsubscribePush, notificationPermission } from '@/utils/push'
+import { isPushSupported, getCurrentPushSubscription, subscribePush, unsubscribePush, notificationPermission, isIOS, isStandalone } from '@/utils/push'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const coupleStore = useCoupleStore()
 
+const logoutDialog = ref(false)
+
 const saving = ref(false)
 const settingsForm = ref({ spaceName: '', anniversaryDate: '' })
+
+const birthdaySaving = ref(false)
+const birthdayForm = ref<{ solarBirthday: string; lunarIsLeap: boolean }>({
+  solarBirthday: '',
+  lunarIsLeap: false,
+})
+const lunarYear = ref(0)
+const lunarMonth = ref(0)
+const lunarDay = ref(0)
+const lunarYearOptions = computed(() => {
+  const now = new Date().getFullYear()
+  const arr: number[] = []
+  for (let y = now; y >= 1930; y--) arr.push(y)
+  return arr
+})
+
+function parseLunar(value: string | null | undefined) {
+  if (!value) return { y: 0, m: 0, d: 0 }
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!m) return { y: 0, m: 0, d: 0 }
+  return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) }
+}
+
+function formatLunar(y: number, m: number, d: number): string | null {
+  if (!y || !m || !d) return null
+  const mm = String(m).padStart(2, '0')
+  const dd = String(d).padStart(2, '0')
+  return `${y}-${mm}-${dd}`
+}
 const stats = ref([
   { type: 'photo', label: '照片', icon: Image, count: 0 },
   { type: 'video', label: '视频', icon: Video, count: 0 },
@@ -170,7 +268,11 @@ const pushEnabled = ref(false)
 const pushBusy = ref(false)
 const pushError = ref('')
 const isHttps = computed(() => location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+const iosNeedsInstall = computed(() => isIOS() && !isStandalone())
+const iosTooOld = computed(() => isIOS() && isStandalone() && !pushSupported.value)
 const pushStatusLabel = computed(() => {
+  if (iosNeedsInstall.value) return '未开启（需先添加到主屏幕）'
+  if (iosTooOld.value) return '系统版本过低'
   if (!pushSupported.value) return '不支持'
   if (pushEnabled.value) return '已开启'
   if (notificationPermission() === 'denied') return '权限已被禁用，请到浏览器设置中开启'
@@ -238,17 +340,47 @@ async function saveSettings() {
   }
 }
 
+async function saveBirthday() {
+  birthdaySaving.value = true
+  try {
+    await userStore.updateProfile({
+      solarBirthday: birthdayForm.value.solarBirthday || null,
+      lunarBirthday: formatLunar(lunarYear.value, lunarMonth.value, lunarDay.value),
+      lunarIsLeap: !!birthdayForm.value.lunarIsLeap,
+    })
+  } finally {
+    birthdaySaving.value = false
+  }
+}
+
 function handleLogout() {
-  if (!confirm('确定退出登录吗？')) return
-  userStore.logout()
-  coupleStore.clear()
-  router.replace('/login')
+  logoutDialog.value = true
+}
+
+async function doLogout() {
+  try {
+    userStore.logout()
+    coupleStore.clear()
+  } catch (e) {
+    console.warn('logout cleanup failed', e)
+  }
+  await router.replace('/login')
 }
 
 onMounted(async () => {
   if (coupleStore.info) {
     settingsForm.value.spaceName = coupleStore.info.spaceName || ''
     settingsForm.value.anniversaryDate = coupleStore.info.anniversaryDate || ''
+  }
+
+  const u = userStore.user
+  if (u) {
+    birthdayForm.value.solarBirthday = u.solarBirthday || ''
+    birthdayForm.value.lunarIsLeap = !!u.lunarIsLeap
+    const parsed = parseLunar(u.lunarBirthday)
+    lunarYear.value = parsed.y
+    lunarMonth.value = parsed.m
+    lunarDay.value = parsed.d
   }
 
   const counts = await memoryApi.stats()

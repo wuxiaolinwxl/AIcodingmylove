@@ -111,7 +111,12 @@
                 class="relative aspect-square overflow-hidden rounded-lg bg-black/10 focus:outline-none"
                 @click="openImage(im)"
               >
-                <img :src="im.ossKey || ''" loading="lazy" class="w-full h-full object-cover" />
+                <SafeImage
+                  :src="im.ossKey"
+                  loading="lazy"
+                  wrapper-class="absolute inset-0"
+                  img-class="w-full h-full object-cover"
+                />
                 <div
                   v-if="idx === 3 && cell.msgs.length > 4"
                   class="absolute inset-0 bg-ink-900/55 flex items-center justify-center text-white text-base font-semibold"
@@ -292,7 +297,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply, Smile } from 'lucide-vue-next'
-import { io, Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
 import { useChatStore } from '@/stores/chat'
@@ -300,6 +305,7 @@ import { chatApi } from '@/api'
 import { uploadToOss } from '@/api/upload'
 import ImageLightbox from '@/components/ImageLightbox.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
+import SafeImage from '@/components/SafeImage.vue'
 
 interface Msg {
   id: number
@@ -593,55 +599,51 @@ async function loadEarlier() {
 }
 
 function setupSocket() {
-  socket = io(`${location.protocol}//${location.host}/chat`, {
-    transports: ['websocket', 'polling'],
-    auth: { token: userStore.token },
-    path: '/socket.io',
-  })
+  if (!userStore.token) return
+  const s = chatStore.connect(userStore.token)
+  socket = s
 
-  socket.on('connected', (payload: { userId: number; coupleId: number; online: number[] }) => {
-    const partnerId = partner.value?.id
-    if (partnerId && Array.isArray(payload.online)) {
-      partnerOnline.value = payload.online.includes(partnerId)
-    } else {
-      partnerOnline.value = false
+  s.off('message:new', onMessageNew)
+  s.off('typing', onTyping)
+  s.off('read', onRead)
+  s.on('message:new', onMessageNew)
+  s.on('typing', onTyping)
+  s.on('read', onRead)
+
+  const partnerId = partner.value?.id
+  partnerOnline.value = partnerId ? chatStore.onlineUserIds.includes(partnerId) : false
+}
+
+const onMessageNew = (msg: Msg) => {
+  messages.value.push(msg)
+  scrollToBottom()
+  if (msg.senderId !== userStore.user?.id) {
+    socket?.emit('read')
+    chatStore.clear()
+  }
+}
+
+const onTyping = () => {
+  partnerTyping.value = true
+  if (typingTimer) clearTimeout(typingTimer)
+  typingTimer = setTimeout(() => { partnerTyping.value = false }, 2000)
+}
+
+const onRead = () => {
+  messages.value.forEach((m) => {
+    if (m.senderId === userStore.user?.id && !m.readAt) {
+      m.readAt = new Date().toISOString()
     }
-  })
-
-  socket.on('presence', (payload: { userId: number; online: boolean }) => {
-    const partnerId = partner.value?.id
-    if (partnerId && payload.userId === partnerId) {
-      partnerOnline.value = payload.online
-    }
-  })
-
-  socket.on('message:new', (msg: Msg) => {
-    messages.value.push(msg)
-    scrollToBottom()
-    if (msg.senderId !== userStore.user?.id) {
-      socket?.emit('read')
-      chatStore.clear()
-    }
-  })
-
-  socket.on('typing', () => {
-    partnerTyping.value = true
-    if (typingTimer) clearTimeout(typingTimer)
-    typingTimer = setTimeout(() => { partnerTyping.value = false }, 2000)
-  })
-
-  socket.on('read', () => {
-    messages.value.forEach((m) => {
-      if (m.senderId === userStore.user?.id && !m.readAt) {
-        m.readAt = new Date().toISOString()
-      }
-    })
-  })
-
-  socket.on('disconnect', () => {
-    partnerOnline.value = false
   })
 }
+
+watch(
+  () => [chatStore.onlineUserIds, partner.value?.id] as const,
+  ([list, partnerId]) => {
+    partnerOnline.value = !!partnerId && (list as number[]).includes(partnerId)
+  },
+  { deep: true },
+)
 
 function sendText() {
   const text = inputText.value.trim()
@@ -768,7 +770,12 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  socket?.disconnect()
+  if (socket) {
+    socket.off('message:new', onMessageNew)
+    socket.off('typing', onTyping)
+    socket.off('read', onRead)
+    socket = null
+  }
   if (typingTimer) clearTimeout(typingTimer)
   if (searchTimer) clearTimeout(searchTimer)
   document.removeEventListener('click', handleDocClick)

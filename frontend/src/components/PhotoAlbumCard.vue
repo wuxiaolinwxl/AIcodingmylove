@@ -20,7 +20,12 @@
         class="relative aspect-square overflow-hidden rounded-lg bg-cream-100"
         @click="$emit('open', items, idx)"
       >
-        <img :src="item.ossUrl" class="w-full h-full object-cover hover:scale-105 transition-transform duration-200" loading="lazy" />
+        <SafeImage
+          :src="item.ossUrl"
+          loading="lazy"
+          wrapper-class="absolute inset-0"
+          img-class="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+        />
         <div v-if="idx === MAX - 1 && extra > 0" class="absolute inset-0 bg-ink-900/55 flex items-center justify-center">
           <span class="text-white text-lg font-bold">+{{ extra }}</span>
         </div>
@@ -44,6 +49,7 @@ import { computed } from 'vue'
 import { Images, Maximize2 } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
+import SafeImage from '@/components/SafeImage.vue'
 
 const props = defineProps<{
   items: Array<{
@@ -55,7 +61,7 @@ const props = defineProps<{
   }>
 }>()
 
-defineEmits<{ open: [items: typeof props.items, index: number] }>()
+defineEmits<{ open: [items: unknown[], index: number] }>()
 
 const userStore = useUserStore()
 const coupleStore = useCoupleStore()

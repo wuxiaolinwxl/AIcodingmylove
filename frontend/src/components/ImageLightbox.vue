@@ -41,12 +41,23 @@
 
       <div class="absolute inset-0 flex items-center justify-center px-2" @click.self="close">
         <img
+          v-if="!loadError"
           :key="currentSrc"
           :src="currentSrc"
           class="max-w-full max-h-full object-contain rounded-xl"
           draggable="false"
           @click.stop
+          @error="onLoadError"
         />
+        <button
+          v-else
+          type="button"
+          class="px-4 py-3 rounded-xl bg-white/15 backdrop-blur text-white text-sm flex items-center gap-2"
+          @click.stop="retry"
+        >
+          <ImageOff :size="18" />
+          加载失败，点击重试
+        </button>
       </div>
 
       <div
@@ -62,7 +73,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { X, ChevronLeft, ChevronRight, ImageOff } from 'lucide-vue-next'
 
 interface Item {
   src: string
@@ -85,8 +96,33 @@ const index = computed({
   set: (v) => emit('update:index', v),
 })
 
-const currentSrc = computed(() => props.items[props.index]?.src || '')
+const retryToken = ref(0)
+const loadError = ref(false)
+const baseSrc = computed(() => props.items[props.index]?.src || '')
+const currentSrc = computed(() => {
+  if (!baseSrc.value) return ''
+  if (retryToken.value === 0) return baseSrc.value
+  const sep = baseSrc.value.includes('?') ? '&' : '?'
+  return `${baseSrc.value}${sep}_r=${retryToken.value}`
+})
 const currentCaption = computed(() => props.items[props.index]?.caption || '')
+
+watch(
+  () => props.index,
+  () => {
+    retryToken.value = 0
+    loadError.value = false
+  },
+)
+
+function onLoadError() {
+  loadError.value = true
+}
+
+function retry() {
+  loadError.value = false
+  retryToken.value += 1
+}
 
 function close() {
   emit('update:show', false)

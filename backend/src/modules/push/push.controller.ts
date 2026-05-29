@@ -18,7 +18,7 @@ export class PushController {
     @CurrentUser() user: any,
     @Body() body: { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string },
   ) {
-    return this.pushService.subscribe(user.id, user.coupleId ?? null, body);
+    return this.pushService.subscribe(user.userId, user.coupleId ?? null, body);
   }
 
   @Delete('subscribe')

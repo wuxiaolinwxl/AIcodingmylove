@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 
 
 @Entity('messages')
 @Index(['coupleId', 'createdAt'])
+@Index(['coupleId', 'id'])
 export class Message {
   @PrimaryGeneratedColumn()
   id: number;

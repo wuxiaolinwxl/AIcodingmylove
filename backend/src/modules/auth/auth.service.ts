@@ -71,6 +71,9 @@ export class AuthService {
       email: user.email,
       avatarUrl: user.avatarUrl,
       coupleId: user.coupleId || null,
+      solarBirthday: user.solarBirthday || null,
+      lunarBirthday: user.lunarBirthday || null,
+      lunarIsLeap: !!user.lunarIsLeap,
     };
   }
 }
