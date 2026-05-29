@@ -1,24 +1,33 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { join } from 'path';
+import { SignUrlInterceptor } from './modules/oss/sign-url.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
 
-  app.setGlobalPrefix('api');
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+
+  app.setGlobalPrefix('api', { exclude: ['uploads/(.*)'] });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalInterceptors(app.get(SignUrlInterceptor));
 
-  const uploadDir = process.env.UPLOAD_DIR || join(__dirname, '..', '..', 'uploads');
-  app.useStaticAssets(uploadDir, { prefix: '/uploads/' });
-
-  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+  const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: corsOrigin.split(','),
-    credentials: true,
+    origin: origins.length > 1 ? origins : origins[0],
+    credentials: origins.length === 1,
   });
 
   const port = process.env.PORT || 3000;

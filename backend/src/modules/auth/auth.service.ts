@@ -19,7 +19,7 @@ export class AuthService {
       throw new ConflictException('用户名已存在');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = this.userRepo.create({
       username: dto.username,
       passwordHash,

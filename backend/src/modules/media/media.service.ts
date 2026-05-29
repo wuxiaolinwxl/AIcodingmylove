@@ -19,6 +19,8 @@ export class MediaService {
   ) {}
 
   async create(coupleId: number, uploaderId: number, dto: CreateMemoryDto) {
+    const normKey = OssService.normalizeKey(dto.ossKey) ?? OssService.normalizeKey(dto.ossUrl);
+    const normCover = OssService.normalizeKey(dto.coverUrl);
     const memory = this.memoryRepo.create({
       coupleId,
       uploaderId,
@@ -26,9 +28,9 @@ export class MediaService {
       title: dto.title,
       content: dto.content,
       fileName: dto.fileName,
-      ossKey: dto.ossKey,
-      ossUrl: dto.ossUrl,
-      coverUrl: dto.coverUrl,
+      ossKey: normKey || undefined,
+      ossUrl: normKey ? `/uploads/${normKey}` : undefined,
+      coverUrl: normCover ? `/uploads/${normCover}` : undefined,
       fileSize: dto.fileSize || 0,
       memoryDate: new Date(dto.memoryDate),
     });

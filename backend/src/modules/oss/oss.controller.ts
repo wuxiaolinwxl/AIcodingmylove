@@ -6,6 +6,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { OssService } from './oss.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -18,6 +19,7 @@ export class OssController {
   constructor(private ossService: OssService) {}
 
   @Post('upload')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 200 * 1024 * 1024 } }))
   async upload(
     @UploadedFile() file: Express.Multer.File,

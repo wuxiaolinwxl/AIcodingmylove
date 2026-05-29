@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CoupleGuard } from '../../common/couple.guard';
@@ -15,6 +16,7 @@ export class ChatController {
   }
 
   @Get('search')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   search(@CurrentUser() user: any, @Query() query: { q: string; page?: number; pageSize?: number }) {
     return this.chatService.search(user.coupleId, query.q, Number(query.page) || 1, Number(query.pageSize) || 20);
   }

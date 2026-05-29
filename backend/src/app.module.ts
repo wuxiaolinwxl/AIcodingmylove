@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -17,9 +18,18 @@ import { Memory } from './entities/memory.entity';
 import { Message } from './entities/message.entity';
 import { PushSubscription } from './entities/push-subscription.entity';
 
+function requireEnv(key: string): string {
+  const v = process.env[key];
+  if (!v) {
+    throw new Error(`${key} is not set. Refusing to start.`);
+  }
+  return v;
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 120 },
     ]),
@@ -27,9 +37,9 @@ import { PushSubscription } from './entities/push-subscription.entity';
       type: 'mysql',
       host: process.env.DB_HOST || '127.0.0.1',
       port: parseInt(process.env.DB_PORT || '3306', 10),
-      username: process.env.DB_USER || 'ms_user',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'memory_space',
+      username: requireEnv('DB_USER'),
+      password: requireEnv('DB_PASSWORD'),
+      database: requireEnv('DB_NAME'),
       entities: [User, Couple, Invitation, Memory, Message, PushSubscription],
       synchronize: process.env.DB_SYNCHRONIZE === 'true',
       charset: 'utf8mb4',

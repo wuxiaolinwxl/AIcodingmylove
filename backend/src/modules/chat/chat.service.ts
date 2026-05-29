@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, Like } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Message } from '../../entities/message.entity';
+import { OssService } from '../oss/oss.service';
 
 @Injectable()
 export class ChatService {
@@ -41,19 +42,29 @@ export class ChatService {
       }
     }
 
+    const normalizedKey = OssService.normalizeKey(data.ossKey) ?? undefined;
+
     const msg = this.msgRepo.create({
       coupleId: data.coupleId,
       senderId: data.senderId,
       msgType: data.msgType,
       content: data.content,
-      ossKey: data.ossKey,
+      ossKey: normalizedKey,
       fileName: data.fileName,
       fileSize: data.fileSize,
       replyToId: replyToId ?? undefined,
       replyToSenderId: replyToSenderId ?? undefined,
       replyToSnippet: replyToSnippet ?? undefined,
     });
-    return this.msgRepo.save(msg);
+    const saved = await this.msgRepo.save(msg);
+    return this.toDto(saved);
+  }
+
+  toDto(m: Message) {
+    return {
+      ...m,
+      ossUrl: m.ossKey ? `/uploads/${m.ossKey}` : null,
+    };
   }
 
   async getHistory(coupleId: number, before?: number, limit = 30) {
@@ -70,7 +81,7 @@ export class ChatService {
       .take(safeLimit)
       .getMany();
 
-    return items.reverse();
+    return items.reverse().map((m) => this.toDto(m));
   }
 
   async search(coupleId: number, q: string, page = 1, pageSize = 20) {
@@ -86,7 +97,7 @@ export class ChatService {
       .take(safePageSize)
       .getManyAndCount();
 
-    return { items, total, page: safePage, pageSize: safePageSize };
+    return { items: items.map((m) => this.toDto(m)), total, page: safePage, pageSize: safePageSize };
   }
 
   async markRead(coupleId: number, readerId: number) {

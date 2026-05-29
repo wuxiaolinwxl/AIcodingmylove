@@ -15,12 +15,18 @@ import { User } from '../../entities/user.entity';
 import { Couple } from '../../entities/couple.entity';
 import { ChatService } from './chat.service';
 import { PushService } from '../push/push.service';
+import { UrlSigner } from '../oss/url-signer';
+
+const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 @WebSocketGateway({
   namespace: '/chat',
   cors: {
-    origin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(','),
-    credentials: true,
+    origin: corsOrigins.length > 1 ? corsOrigins : corsOrigins[0],
+    credentials: corsOrigins.length === 1,
   },
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -33,6 +39,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private jwtService: JwtService,
     private chatService: ChatService,
     private pushService: PushService,
+    private signer: UrlSigner,
     @InjectRepository(User)
     private userRepo: Repository<User>,
     @InjectRepository(Couple)
@@ -131,7 +138,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       replyToId: data.replyToId,
     });
 
-    this.server.to(`couple_${coupleId}`).emit('message:new', msg);
+    const sockets = await this.server.in(`couple_${coupleId}`).fetchSockets();
+    for (const s of sockets) {
+      const viewer = (s as any).userId as number | undefined;
+      if (!viewer) continue;
+      const payload = msg.ossKey
+        ? { ...msg, ossUrl: this.signer.sign(msg.ossKey, viewer) }
+        : msg;
+      s.emit('message:new', payload);
+    }
 
     this.notifyPartnerIfOffline(coupleId, userId, msg).catch(() => {});
   }

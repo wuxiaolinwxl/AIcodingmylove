@@ -57,7 +57,12 @@
               <span class="text-xs font-medium text-ink-700">{{ r.senderId === userStore.user?.id ? '我' : partnerName }}</span>
               <span class="text-[10px] text-ink-300">{{ formatSearchTime(r.createdAt) }}</span>
             </div>
-            <p class="text-sm text-ink-700 line-clamp-2" v-html="highlight(r.content || r.fileName || '', searchQuery)"></p>
+            <p class="text-sm text-ink-700 line-clamp-2">
+              <template v-for="(seg, i) in highlightSegments(r.content || r.fileName || '', searchQuery)" :key="i">
+                <mark v-if="seg.mark" class="bg-rose-100 text-rose-700 rounded px-0.5">{{ seg.text }}</mark>
+                <template v-else>{{ seg.text }}</template>
+              </template>
+            </p>
           </button>
         </div>
       </div>
@@ -112,7 +117,7 @@
                 @click="openImage(im)"
               >
                 <SafeImage
-                  :src="im.ossKey"
+                  :src="im.ossUrl"
                   loading="lazy"
                   wrapper-class="absolute inset-0"
                   img-class="w-full h-full object-cover"
@@ -187,12 +192,12 @@
               class="block focus:outline-none"
               @click="openImage(cell.msg)"
             >
-              <img :src="cell.msg.ossKey || ''" loading="lazy" class="rounded-xl max-w-full max-h-72 cursor-pointer" />
+              <img :src="cell.msg.ossUrl || ''" loading="lazy" class="rounded-xl max-w-full max-h-72 cursor-pointer" />
             </button>
             <!-- File -->
             <a
               v-else-if="cell.msg.msgType === 'file'"
-              :href="cell.msg.ossKey || '#'"
+              :href="cell.msg.ossUrl || '#'"
               :download="cell.msg.fileName || 'download'"
               target="_blank"
               rel="noopener"
@@ -314,6 +319,7 @@ interface Msg {
   msgType: 'text' | 'image' | 'file'
   content: string | null
   ossKey: string | null
+  ossUrl: string | null
   fileName: string | null
   fileSize: number
   readAt: string | null
@@ -390,8 +396,8 @@ const lightbox = ref({ show: false, index: 0 })
 
 const allImages = computed(() =>
   messages.value
-    .filter((m) => m.msgType === 'image' && m.ossKey)
-    .map((m) => ({ msgId: m.id, src: m.ossKey as string, createdAt: m.createdAt })),
+    .filter((m) => m.msgType === 'image' && m.ossUrl)
+    .map((m) => ({ msgId: m.id, src: m.ossUrl as string, createdAt: m.createdAt })),
 )
 
 const lightboxItems = computed(() =>
@@ -540,15 +546,14 @@ function showDateSeparator(idx: number) {
 }
 void showDateSeparator
 
-function escapeHtml(str: string) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function highlight(text: string, q: string) {
-  if (!q) return escapeHtml(text)
-  const escaped = escapeHtml(text)
-  const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-  return escaped.replace(regex, '<mark class="bg-rose-100 text-rose-700 rounded px-0.5">$1</mark>')
+function highlightSegments(text: string, q: string): Array<{ text: string; mark: boolean }> {
+  if (!q) return [{ text, mark: false }]
+  const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${safeQ})`, 'gi')
+  const parts = text.split(regex)
+  if (parts.length <= 1) return [{ text, mark: false }]
+  const matcher = new RegExp(`^${safeQ}$`, 'i')
+  return parts.filter((p) => p.length > 0).map((p) => ({ text: p, mark: matcher.test(p) }))
 }
 
 function scrollToBottom() {
@@ -678,7 +683,7 @@ async function handleImageUpload(e: Event) {
     const res = await uploadToOss(file, 'chat', 'image')
     socket.emit('message:send', {
       msgType: 'image',
-      ossKey: res.url,
+      ossKey: res.key,
       fileSize: res.size,
       replyToId: replyTo.value?.id,
     })
@@ -698,7 +703,7 @@ async function handleFileUpload(e: Event) {
     const res = await uploadToOss(file, 'chat', 'file')
     socket.emit('message:send', {
       msgType: 'file',
-      ossKey: res.url,
+      ossKey: res.key,
       fileName: res.name,
       fileSize: res.size,
       replyToId: replyTo.value?.id,
