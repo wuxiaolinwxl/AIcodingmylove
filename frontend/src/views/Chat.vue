@@ -23,6 +23,33 @@
       </button>
     </div>
 
+    <!-- Love score -->
+    <div class="bg-white border-b border-cream-200 px-4 py-2.5">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-9 h-9 rounded-full bg-cream-100 border border-cream-200 flex items-center justify-center text-xs font-medium text-ink-700 overflow-hidden shrink-0">
+            <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" class="w-full h-full object-cover" />
+            <span v-else>{{ selfInitial }}</span>
+          </div>
+          <span class="text-[11px] text-ink-500 truncate">{{ selfDisplayName }}</span>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <Heart :size="14" class="text-rose-500" fill="#D85667" />
+          <span class="text-rose-500 font-semibold tabular-nums text-base">
+            {{ loveScoreText }}%
+          </span>
+          <Heart :size="14" class="text-rose-500" fill="#D85667" />
+        </div>
+        <div class="flex items-center gap-2 min-w-0 justify-end">
+          <span class="text-[11px] text-ink-500 truncate text-right">{{ partnerName }}</span>
+          <div class="w-9 h-9 rounded-full bg-cream-100 border border-cream-200 flex items-center justify-center text-xs font-medium text-ink-700 overflow-hidden shrink-0">
+            <img v-if="partner?.avatarUrl" :src="partner.avatarUrl" class="w-full h-full object-cover" />
+            <span v-else>{{ partnerInitial }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Search panel -->
     <div v-if="showSearch" class="bg-white border-b border-cream-200 px-4 py-3 space-y-3">
       <div class="relative">
@@ -95,6 +122,14 @@
             highlightedId === cell.msgs[0].id ? 'ring-2 ring-rose-300 ring-offset-2 ring-offset-cream-50' : '']"
         >
           <button
+            v-if="cell.senderId === userStore.user?.id && canRecall(cell.msgs[0])"
+            @click="recallMessage(cell.msgs[0])"
+            class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
+            title="撤回"
+          >
+            <RotateCcw :size="14" />
+          </button>
+          <button
             v-if="cell.senderId === userStore.user?.id"
             @click="startReply(cell.msgs[cell.msgs.length - 1])"
             class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
@@ -148,6 +183,24 @@
           </button>
         </div>
 
+        <!-- Recalled placeholder -->
+        <div
+          v-else-if="cell.msg.deletedAt"
+          :data-msg-id="cell.msg.id"
+          class="flex justify-center"
+        >
+          <span class="text-[11px] text-ink-400 bg-cream-100 rounded-full px-3 py-1">
+            {{ cell.msg.senderId === userStore.user?.id ? '你撤回了一条消息' : '对方撤回了一条消息' }}
+            <button
+              v-if="cell.msg.senderId === userStore.user?.id && cell.msg.msgType === 'text' && (cell.msg as any)._originalContent"
+              @click="reEditRecalled(cell.msg)"
+              class="ml-2 text-rose-500 hover:underline"
+            >
+              重新编辑
+            </button>
+          </span>
+        </div>
+
         <!-- Regular message bubble -->
         <div
           v-else
@@ -156,6 +209,14 @@
             cell.msg.senderId === userStore.user?.id ? 'justify-end' : 'justify-start',
             highlightedId === cell.msg.id ? 'ring-2 ring-rose-300 ring-offset-2 ring-offset-cream-50' : '']"
         >
+          <button
+            v-if="cell.msg.senderId === userStore.user?.id && canRecall(cell.msg)"
+            @click="recallMessage(cell.msg)"
+            class="opacity-0 group-hover/msg:opacity-100 text-ink-400 hover:text-rose-500 transition-opacity"
+            title="撤回"
+          >
+            <RotateCcw :size="14" />
+          </button>
           <button
             v-if="cell.msg.senderId === userStore.user?.id"
             @click="startReply(cell.msg)"
@@ -301,7 +362,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
-import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply, Smile } from 'lucide-vue-next'
+import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply, Smile, RotateCcw, Heart } from 'lucide-vue-next'
 import type { Socket } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
@@ -327,11 +388,17 @@ interface Msg {
   replyToId?: number | null
   replyToSenderId?: number | null
   replyToSnippet?: string | null
+  deletedAt?: string | null
 }
 
 const userStore = useUserStore()
 const coupleStore = useCoupleStore()
 const chatStore = useChatStore()
+
+const loveScoreText = computed(() => {
+  const v = Number(coupleStore.info?.loveScore || 0)
+  return v.toFixed(2)
+})
 
 const messages = ref<Msg[]>([])
 const inputText = ref('')
@@ -427,7 +494,7 @@ type GroupCell = { kind: 'image-group'; key: string; senderId: number; msgs: Msg
 type DisplayCell = DateCell | SingleCell | GroupCell
 
 function isPureImage(m: Msg) {
-  return m.msgType === 'image' && !m.replyToId
+  return m.msgType === 'image' && !m.replyToId && !m.deletedAt
 }
 
 const displayCells = computed<DisplayCell[]>(() => {
@@ -484,6 +551,32 @@ function cancelReply() {
   replyTo.value = null
 }
 
+const RECALL_WINDOW_MS = 2 * 60 * 1000
+const nowTick = ref(Date.now())
+let nowTimer: ReturnType<typeof setInterval> | null = null
+
+function canRecall(msg: Msg): boolean {
+  if (msg.deletedAt) return false
+  if (msg.senderId !== userStore.user?.id) return false
+  const age = nowTick.value - new Date(msg.createdAt).getTime()
+  return age >= 0 && age < RECALL_WINDOW_MS
+}
+
+function recallMessage(msg: Msg) {
+  if (!socket || !canRecall(msg)) return
+  socket.emit('message:recall', { id: msg.id })
+}
+
+function reEditRecalled(msg: Msg) {
+  if (msg.senderId !== userStore.user?.id) return
+  if (msg.msgType !== 'text') return
+  const original = (msg as any)._originalContent as string | undefined
+  if (!original) return
+  inputText.value = original
+  if (replyTo.value?.id === msg.id) replyTo.value = null
+  nextTick(() => inputEl.value?.focus())
+}
+
 function quotePreviewText(msg: Msg): string {
   if (msg.msgType === 'text') {
     const t = (msg.content || '').replace(/\s+/g, ' ').trim()
@@ -512,6 +605,11 @@ const partner = computed(() => {
 const partnerName = computed(() => partner.value?.nickname || partner.value?.username || '伴侣')
 const partnerInitial = computed(() => {
   const name = partnerName.value
+  return name ? name.charAt(0).toUpperCase() : '·'
+})
+const selfDisplayName = computed(() => userStore.user?.nickname || userStore.user?.username || '我')
+const selfInitial = computed(() => {
+  const name = selfDisplayName.value
   return name ? name.charAt(0).toUpperCase() : '·'
 })
 
@@ -609,9 +707,13 @@ function setupSocket() {
   socket = s
 
   s.off('message:new', onMessageNew)
+  s.off('message:recalled', onMessageRecalled)
+  s.off('message:recall:error', onRecallError)
   s.off('typing', onTyping)
   s.off('read', onRead)
   s.on('message:new', onMessageNew)
+  s.on('message:recalled', onMessageRecalled)
+  s.on('message:recall:error', onRecallError)
   s.on('typing', onTyping)
   s.on('read', onRead)
 
@@ -625,6 +727,34 @@ const onMessageNew = (msg: Msg) => {
   if (msg.senderId !== userStore.user?.id) {
     socket?.emit('read')
     chatStore.clear()
+  }
+}
+
+const onMessageRecalled = (msg: Msg) => {
+  const idx = messages.value.findIndex((m) => m.id === msg.id)
+  if (idx >= 0) {
+    const prev = messages.value[idx]
+    const merged: Msg = {
+      ...prev,
+      ...msg,
+    }
+    if (prev.senderId === userStore.user?.id && prev.msgType === 'text' && prev.content) {
+      ;(merged as any)._originalContent = (prev as any)._originalContent ?? prev.content
+    }
+    messages.value.splice(idx, 1, merged)
+  }
+  if (replyTo.value?.id === msg.id) {
+    replyTo.value = null
+  }
+  if (searchResults.value.length) {
+    searchResults.value = searchResults.value.filter((r) => r.id !== msg.id)
+  }
+}
+
+const onRecallError = (data: { id: number; message: string }) => {
+  console.warn('[recall]', data)
+  if (typeof window !== 'undefined') {
+    window.alert(data.message || '撤回失败')
   }
 }
 
@@ -772,17 +902,21 @@ onMounted(async () => {
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', onViewportResize)
   }
+  nowTimer = setInterval(() => { nowTick.value = Date.now() }, 15_000)
 })
 
 onBeforeUnmount(() => {
   if (socket) {
     socket.off('message:new', onMessageNew)
+    socket.off('message:recalled', onMessageRecalled)
+    socket.off('message:recall:error', onRecallError)
     socket.off('typing', onTyping)
     socket.off('read', onRead)
     socket = null
   }
   if (typingTimer) clearTimeout(typingTimer)
   if (searchTimer) clearTimeout(searchTimer)
+  if (nowTimer) clearInterval(nowTimer)
   document.removeEventListener('click', handleDocClick)
   if (window.visualViewport) {
     window.visualViewport.removeEventListener('resize', onViewportResize)

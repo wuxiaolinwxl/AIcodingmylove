@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Matches, IsBoolean, MaxLength } from 'class-validator';
+import { IsOptional, IsString, Matches, IsBoolean, MaxLength, ValidateIf } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -7,11 +7,13 @@ export class UpdateProfileDto {
   nickname?: string;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'solarBirthday 格式应为 YYYY-MM-DD' })
   solarBirthday?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'lunarBirthday 格式应为 YYYY-MM-DD' })
   lunarBirthday?: string | null;
@@ -19,4 +21,10 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsBoolean()
   lunarIsLeap?: boolean;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(512)
+  avatarUrl?: string | null;
 }

@@ -18,7 +18,7 @@ export class User {
   nickname: string;
 
   @Column({ type: 'varchar', length: 512, nullable: true })
-  avatarUrl: string;
+  avatarUrl: string | null;
 
   @Column({ type: 'int', nullable: true })
   coupleId: number;

@@ -127,7 +127,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = (client as any).userId;
     const coupleId = (client as any).coupleId;
 
-    const msg = await this.chatService.createMessage({
+    const { dto: msg, score } = await this.chatService.createMessage({
       coupleId,
       senderId: userId,
       msgType: data.msgType,
@@ -147,6 +147,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         : msg;
       s.emit('message:new', payload);
     }
+    this.server.to(`couple_${coupleId}`).emit('lovescore', { score });
 
     this.notifyPartnerIfOffline(coupleId, userId, msg).catch(() => {});
   }
@@ -184,6 +185,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = (client as any).userId;
     const coupleId = (client as any).coupleId;
     client.to(`couple_${coupleId}`).emit('typing', { userId });
+  }
+
+  @SubscribeMessage('message:recall')
+  async handleRecall(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { id: number },
+  ) {
+    const userId = (client as any).userId;
+    const coupleId = (client as any).coupleId;
+    if (!data?.id) return;
+    try {
+      const dto = await this.chatService.recallMessage(coupleId, userId, Number(data.id));
+      this.server.to(`couple_${coupleId}`).emit('message:recalled', dto);
+    } catch (err: any) {
+      client.emit('message:recall:error', {
+        id: data.id,
+        message: err?.message || '撤回失败',
+      });
+    }
   }
 
   @SubscribeMessage('read')

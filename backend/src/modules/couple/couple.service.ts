@@ -106,13 +106,14 @@ export class CoupleService {
 
     const members = await this.userRepo.find({
       where: [{ id: couple.userAId }, { id: couple.userBId }],
-      select: ['id', 'username', 'nickname', 'avatarUrl'],
+      select: ['id', 'username', 'nickname', 'avatarUrl', 'solarBirthday', 'lunarBirthday', 'lunarIsLeap'],
     });
 
     return {
       id: couple.id,
       spaceName: couple.spaceName,
       anniversaryDate: couple.anniversaryDate,
+      loveScore: Number(couple.loveScore || 0),
       createdAt: couple.createdAt,
       members,
     };

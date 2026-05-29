@@ -10,12 +10,14 @@ import { User } from '../../entities/user.entity';
 import { Couple } from '../../entities/couple.entity';
 import { PushModule } from '../push/push.module';
 import { OssModule } from '../oss/oss.module';
+import { CoupleModule } from '../couple/couple.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Message, User, Couple]),
     PushModule,
     OssModule,
+    CoupleModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

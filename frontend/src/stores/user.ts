@@ -63,6 +63,7 @@ export const useUserStore = defineStore('user', () => {
     solarBirthday?: string | null
     lunarBirthday?: string | null
     lunarIsLeap?: boolean
+    avatarUrl?: string | null
   }) {
     const u = await userApi.updateMe(data)
     user.value = u

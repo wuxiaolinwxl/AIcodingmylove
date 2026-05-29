@@ -6,8 +6,17 @@ export interface CoupleInfo {
   id: number
   spaceName: string
   anniversaryDate: string | null
+  loveScore: number
   createdAt: string
-  members: { id: number; username: string; nickname: string; avatarUrl: string | null }[]
+  members: {
+    id: number
+    username: string
+    nickname: string
+    avatarUrl: string | null
+    solarBirthday?: string | null
+    lunarBirthday?: string | null
+    lunarIsLeap?: boolean
+  }[]
 }
 
 export const useCoupleStore = defineStore('couple', () => {
@@ -38,11 +47,15 @@ export const useCoupleStore = defineStore('couple', () => {
     return info.value
   }
 
+  function setLoveScore(score: number) {
+    if (info.value) info.value.loveScore = score
+  }
+
   function clear() {
     info.value = null
     inviteCode.value = ''
     inviteExpiresAt.value = ''
   }
 
-  return { info, inviteCode, inviteExpiresAt, fetchInfo, createInvite, accept, update, clear }
+  return { info, inviteCode, inviteExpiresAt, fetchInfo, createInvite, accept, update, setLoveScore, clear }
 })

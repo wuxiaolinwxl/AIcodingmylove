@@ -21,6 +21,7 @@ export class UserService {
     if (dto.solarBirthday !== undefined) user.solarBirthday = dto.solarBirthday || null;
     if (dto.lunarBirthday !== undefined) user.lunarBirthday = dto.lunarBirthday || null;
     if (dto.lunarIsLeap !== undefined) user.lunarIsLeap = !!dto.lunarIsLeap;
+    if (dto.avatarUrl !== undefined) user.avatarUrl = dto.avatarUrl || null;
 
     const saved = await this.userRepo.save(user);
     return this.sanitize(saved);

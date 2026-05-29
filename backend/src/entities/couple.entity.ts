@@ -17,6 +17,9 @@ export class Couple {
   @Column({ type: 'date', nullable: true })
   anniversaryDate: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  loveScore: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

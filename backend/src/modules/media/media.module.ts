@@ -4,9 +4,10 @@ import { MediaController } from './media.controller';
 import { MediaService } from './media.service';
 import { Memory } from '../../entities/memory.entity';
 import { OssModule } from '../oss/oss.module';
+import { CoupleModule } from '../couple/couple.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Memory]), OssModule],
+  imports: [TypeOrmModule.forFeature([Memory]), OssModule, CoupleModule],
   controllers: [MediaController],
   providers: [MediaService],
 })

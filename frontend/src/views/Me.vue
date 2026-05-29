@@ -32,10 +32,21 @@
       <div class="card !p-5 mb-4">
         <div class="flex items-center">
           <div class="flex-1 flex items-center gap-3">
-            <div class="w-12 h-12 rounded-full bg-cream-100 border border-cream-200 flex items-center justify-center text-sm font-medium text-ink-700 overflow-hidden">
+            <button
+              type="button"
+              @click="pickAvatar"
+              :disabled="avatarUploading"
+              class="relative w-12 h-12 rounded-full bg-cream-100 border border-cream-200 flex items-center justify-center text-sm font-medium text-ink-700 overflow-hidden group"
+              title="点击更换头像"
+            >
               <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" class="w-full h-full object-cover" />
               <span v-else>{{ (userStore.user?.nickname || userStore.user?.username || '').charAt(0) }}</span>
-            </div>
+              <span class="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Loader2 v-if="avatarUploading" :size="16" class="animate-spin" />
+                <Camera v-else :size="14" />
+              </span>
+            </button>
+            <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="onAvatarSelected" />
             <div>
               <p class="text-sm font-medium text-ink-900">{{ userStore.user?.nickname || userStore.user?.username }}</p>
               <p class="text-xs text-ink-500">我</p>
@@ -53,6 +64,7 @@
             </div>
           </div>
         </div>
+        <p v-if="avatarError" class="text-xs text-rose-500 mt-2">{{ avatarError }}</p>
       </div>
 
       <!-- Stats -->
@@ -88,21 +100,55 @@
 
       <!-- Birthday card -->
       <div class="card !p-5 mb-4">
-        <div class="flex items-center gap-2 mb-4">
-          <Cake :size="16" class="text-ink-500" />
-          <h3 class="text-sm font-bold text-ink-900">我的生日</h3>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <Cake :size="16" class="text-ink-500" />
+            <h3 class="text-sm font-bold text-ink-900">我的生日</h3>
+          </div>
+          <button
+            v-if="hasBirthday && !birthdayEditing"
+            @click="openBirthdayEdit"
+            class="text-xs text-ink-400 hover:text-ink-600 transition-colors"
+          >修改</button>
         </div>
-        <div class="space-y-4">
+
+        <!-- Read-only summary -->
+        <div v-if="hasBirthday && !birthdayEditing" class="space-y-2 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-ink-500 text-xs">新历</span>
+            <span class="text-ink-900">{{ solarSummary || '未设置' }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-ink-500 text-xs">农历</span>
+            <span class="text-ink-900">{{ lunarSummary || '未设置' }}</span>
+          </div>
+        </div>
+
+        <!-- Editor -->
+        <div v-else class="space-y-4">
           <div>
             <label class="text-xs text-ink-500 mb-1 block">新历生日</label>
-            <input v-model="birthdayForm.solarBirthday" type="date" class="input" />
+            <div class="grid grid-cols-3 gap-2">
+              <select v-model.number="solarYear" class="input">
+                <option :value="0">年</option>
+                <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+              </select>
+              <select v-model.number="solarMonth" class="input">
+                <option :value="0">月</option>
+                <option v-for="m in 12" :key="m" :value="m">{{ m }} 月</option>
+              </select>
+              <select v-model.number="solarDay" class="input">
+                <option :value="0">日</option>
+                <option v-for="d in solarDayMax" :key="d" :value="d">{{ d }} 日</option>
+              </select>
+            </div>
           </div>
           <div>
             <label class="text-xs text-ink-500 mb-1 block">农历生日</label>
             <div class="grid grid-cols-3 gap-2">
               <select v-model.number="lunarYear" class="input">
                 <option :value="0">年</option>
-                <option v-for="y in lunarYearOptions" :key="y" :value="y">{{ y }}</option>
+                <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
               </select>
               <select v-model.number="lunarMonth" class="input">
                 <option :value="0">月</option>
@@ -118,11 +164,39 @@
               <span>闰月</span>
             </label>
           </div>
-          <button @click="saveBirthday" class="btn-primary w-full" :disabled="birthdaySaving">
-            <Loader2 v-if="birthdaySaving" :size="14" class="animate-spin" />
-            {{ birthdaySaving ? '保存中...' : '保存生日' }}
-          </button>
+          <div class="flex gap-2">
+            <button
+              v-if="hasBirthday"
+              @click="cancelBirthdayEdit"
+              class="btn-ghost flex-1"
+              :disabled="birthdaySaving"
+            >取消</button>
+            <button @click="saveBirthday" class="btn-primary flex-1" :disabled="birthdaySaving">
+              <Loader2 v-if="birthdaySaving" :size="14" class="animate-spin" />
+              {{ birthdaySaving ? '保存中...' : '保存生日' }}
+            </button>
+          </div>
+          <p v-if="birthdayError" class="text-xs text-rose-500">{{ birthdayError }}</p>
         </div>
+      </div>
+
+      <!-- Partner birthday card -->
+      <div class="card !p-5 mb-4">
+        <div class="flex items-center gap-2 mb-4">
+          <Cake :size="16" class="text-ink-500" />
+          <h3 class="text-sm font-bold text-ink-900">TA 的生日</h3>
+        </div>
+        <div v-if="partnerHasBirthday" class="space-y-2 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-ink-500 text-xs">新历</span>
+            <span class="text-ink-900">{{ partnerSolarSummary || '未设置' }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-ink-500 text-xs">农历</span>
+            <span class="text-ink-900">{{ partnerLunarSummary || '未设置' }}</span>
+          </div>
+        </div>
+        <p v-else class="text-xs text-ink-500">TA 还没有设置生日哦～</p>
       </div>
 
       <!-- Notification settings -->
@@ -211,10 +285,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2, Bell, Share, Cake } from 'lucide-vue-next'
+import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2, Bell, Share, Cake, Camera } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
-import { memoryApi } from '@/api'
+import { memoryApi, ossApi } from '@/api'
 import { isPushSupported, getCurrentPushSubscription, subscribePush, unsubscribePush, notificationPermission, isIOS, isStandalone } from '@/utils/push'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
@@ -228,32 +302,121 @@ const saving = ref(false)
 const settingsForm = ref({ spaceName: '', anniversaryDate: '' })
 
 const birthdaySaving = ref(false)
-const birthdayForm = ref<{ solarBirthday: string; lunarIsLeap: boolean }>({
-  solarBirthday: '',
-  lunarIsLeap: false,
-})
+const birthdayEditing = ref(false)
+const birthdayError = ref('')
+const birthdayForm = ref<{ lunarIsLeap: boolean }>({ lunarIsLeap: false })
+const solarYear = ref(0)
+const solarMonth = ref(0)
+const solarDay = ref(0)
 const lunarYear = ref(0)
 const lunarMonth = ref(0)
 const lunarDay = ref(0)
-const lunarYearOptions = computed(() => {
+
+const yearOptions = computed(() => {
   const now = new Date().getFullYear()
   const arr: number[] = []
   for (let y = now; y >= 1930; y--) arr.push(y)
   return arr
 })
 
-function parseLunar(value: string | null | undefined) {
+const solarDayMax = computed(() => {
+  if (!solarYear.value || !solarMonth.value) return 31
+  return new Date(solarYear.value, solarMonth.value, 0).getDate()
+})
+
+function parseYMD(value: string | null | undefined) {
   if (!value) return { y: 0, m: 0, d: 0 }
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
   if (!m) return { y: 0, m: 0, d: 0 }
   return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) }
 }
 
-function formatLunar(y: number, m: number, d: number): string | null {
+function formatYMD(y: number, m: number, d: number): string | null {
   if (!y || !m || !d) return null
   const mm = String(m).padStart(2, '0')
   const dd = String(d).padStart(2, '0')
   return `${y}-${mm}-${dd}`
+}
+
+const hasBirthday = computed(() => {
+  const u = userStore.user
+  return !!(u?.solarBirthday || u?.lunarBirthday)
+})
+
+const solarSummary = computed(() => {
+  const v = userStore.user?.solarBirthday
+  const { y, m, d } = parseYMD(v)
+  if (!y || !m || !d) return ''
+  return `${y} 年 ${m} 月 ${d} 日`
+})
+
+const lunarSummary = computed(() => {
+  const v = userStore.user?.lunarBirthday
+  const { y, m, d } = parseYMD(v)
+  if (!y || !m || !d) return ''
+  const leap = userStore.user?.lunarIsLeap
+  return `${y} 年 ${leap ? '闰' : ''}${m} 月 ${d} 日`
+})
+
+function loadBirthdayDraftFromStore() {
+  const u = userStore.user
+  if (!u) return
+  const s = parseYMD(u.solarBirthday)
+  solarYear.value = s.y
+  solarMonth.value = s.m
+  solarDay.value = s.d
+  const l = parseYMD(u.lunarBirthday)
+  lunarYear.value = l.y
+  lunarMonth.value = l.m
+  lunarDay.value = l.d
+  birthdayForm.value.lunarIsLeap = !!u.lunarIsLeap
+  birthdayError.value = ''
+}
+
+function openBirthdayEdit() {
+  loadBirthdayDraftFromStore()
+  birthdayEditing.value = true
+}
+
+function cancelBirthdayEdit() {
+  loadBirthdayDraftFromStore()
+  birthdayEditing.value = false
+}
+
+const avatarInput = ref<HTMLInputElement>()
+const avatarUploading = ref(false)
+const avatarError = ref('')
+
+function pickAvatar() {
+  avatarError.value = ''
+  avatarInput.value?.click()
+}
+
+async function onAvatarSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    avatarError.value = '请选择图片文件'
+    input.value = ''
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    avatarError.value = '图片需小于 5MB'
+    input.value = ''
+    return
+  }
+  avatarUploading.value = true
+  try {
+    const res = await ossApi.upload(file, 'avatar', 'image')
+    await userStore.updateProfile({ avatarUrl: res.url })
+    coupleStore.fetchInfo().catch(() => {})
+  } catch (err: any) {
+    avatarError.value = err?.response?.data?.message || '头像上传失败'
+  } finally {
+    avatarUploading.value = false
+    input.value = ''
+  }
 }
 const stats = ref([
   { type: 'photo', label: '照片', icon: Image, count: 0 },
@@ -318,6 +481,21 @@ const partner = computed(() => {
 })
 const partnerName = computed(() => partner.value?.nickname || partner.value?.username || '伴侣')
 
+const partnerHasBirthday = computed(() => !!(partner.value?.solarBirthday || partner.value?.lunarBirthday))
+const partnerSolarSummary = computed(() => {
+  const v = partner.value?.solarBirthday
+  const { y, m, d } = parseYMD(v)
+  if (!y || !m || !d) return ''
+  return `${y} 年 ${m} 月 ${d} 日`
+})
+const partnerLunarSummary = computed(() => {
+  const v = partner.value?.lunarBirthday
+  const { y, m, d } = parseYMD(v)
+  if (!y || !m || !d) return ''
+  const leap = partner.value?.lunarIsLeap
+  return `${y} 年 ${leap ? '闰' : ''}${m} 月 ${d} 日`
+})
+
 const daysCount = computed(() => {
   if (!coupleStore.info?.anniversaryDate) return null
   const start = new Date(coupleStore.info.anniversaryDate)
@@ -341,13 +519,25 @@ async function saveSettings() {
 }
 
 async function saveBirthday() {
+  birthdayError.value = ''
+  const solarFilled = !!(solarYear.value && solarMonth.value && solarDay.value)
+  const solarPartial = !!(solarYear.value || solarMonth.value || solarDay.value) && !solarFilled
+  const lunarFilled = !!(lunarYear.value && lunarMonth.value && lunarDay.value)
+  const lunarPartial = !!(lunarYear.value || lunarMonth.value || lunarDay.value) && !lunarFilled
+  if (solarPartial || lunarPartial) {
+    birthdayError.value = '请完整选择年/月/日'
+    return
+  }
   birthdaySaving.value = true
   try {
     await userStore.updateProfile({
-      solarBirthday: birthdayForm.value.solarBirthday || null,
-      lunarBirthday: formatLunar(lunarYear.value, lunarMonth.value, lunarDay.value),
+      solarBirthday: formatYMD(solarYear.value, solarMonth.value, solarDay.value),
+      lunarBirthday: formatYMD(lunarYear.value, lunarMonth.value, lunarDay.value),
       lunarIsLeap: !!birthdayForm.value.lunarIsLeap,
     })
+    birthdayEditing.value = false
+  } catch (e: any) {
+    birthdayError.value = e?.response?.data?.message || '保存失败'
   } finally {
     birthdaySaving.value = false
   }
@@ -375,12 +565,7 @@ onMounted(async () => {
 
   const u = userStore.user
   if (u) {
-    birthdayForm.value.solarBirthday = u.solarBirthday || ''
-    birthdayForm.value.lunarIsLeap = !!u.lunarIsLeap
-    const parsed = parseLunar(u.lunarBirthday)
-    lunarYear.value = parsed.y
-    lunarMonth.value = parsed.m
-    lunarDay.value = parsed.d
+    loadBirthdayDraftFromStore()
   }
 
   const counts = await memoryApi.stats()

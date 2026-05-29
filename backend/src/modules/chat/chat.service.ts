@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from '../../entities/message.entity';
 import { OssService } from '../oss/oss.service';
+import { LoveScoreService, LOVE_SCORE } from '../couple/love-score.service';
 
 @Injectable()
 export class ChatService {
   constructor(
     @InjectRepository(Message)
     private msgRepo: Repository<Message>,
+    private loveScore: LoveScoreService,
   ) {}
 
   async createMessage(data: {
@@ -57,15 +59,57 @@ export class ChatService {
       replyToSnippet: replyToSnippet ?? undefined,
     });
     const saved = await this.msgRepo.save(msg);
-    return this.toDto(saved);
+    const score = await this.loveScore.increment(data.coupleId, LOVE_SCORE.CHAT_REPLY);
+    return { dto: this.toDto(saved), score };
   }
 
   toDto(m: Message) {
+    if (m.deletedAt) {
+      return {
+        id: m.id,
+        coupleId: m.coupleId,
+        senderId: m.senderId,
+        msgType: m.msgType,
+        content: null,
+        ossKey: null,
+        ossUrl: null,
+        fileName: null,
+        fileSize: 0,
+        replyToId: null,
+        replyToSenderId: null,
+        replyToSnippet: null,
+        readAt: m.readAt,
+        deletedAt: m.deletedAt,
+        createdAt: m.createdAt,
+      };
+    }
     return {
       ...m,
-      ossUrl: m.ossKey ? `/uploads/${m.ossKey}` : null,
+      ossUrl: m.ossKey ? `/uploads/${OssService.normalizeKey(m.ossKey) ?? m.ossKey}` : null,
     };
   }
+
+  async recallMessage(coupleId: number, userId: number, msgId: number) {
+    const msg = await this.msgRepo.findOne({ where: { id: msgId } });
+    if (!msg || msg.coupleId !== coupleId) {
+      throw new NotFoundException('消息不存在');
+    }
+    if (msg.senderId !== userId) {
+      throw new ForbiddenException('只能撤回自己的消息');
+    }
+    if (msg.deletedAt) {
+      return this.toDto(msg);
+    }
+    const ageMs = Date.now() - new Date(msg.createdAt).getTime();
+    if (ageMs > ChatService.RECALL_WINDOW_MS) {
+      throw new ForbiddenException('超过2分钟无法撤回');
+    }
+    msg.deletedAt = new Date();
+    const saved = await this.msgRepo.save(msg);
+    return this.toDto(saved);
+  }
+
+  static readonly RECALL_WINDOW_MS = 2 * 60 * 1000;
 
   async getHistory(coupleId: number, before?: number, limit = 30) {
     const safeLimit = Math.min(100, Math.max(1, Number(limit) || 30));
@@ -91,6 +135,7 @@ export class ChatService {
 
     const [items, total] = await this.msgRepo.createQueryBuilder('m')
       .where('m.coupleId = :coupleId', { coupleId })
+      .andWhere('m.deletedAt IS NULL')
       .andWhere('(m.content LIKE :kw OR m.fileName LIKE :kw)', { kw: `%${escaped}%` })
       .orderBy('m.id', 'DESC')
       .skip((safePage - 1) * safePageSize)

@@ -111,6 +111,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Plus, Search, Loader2, Sparkles, Layers, Image, Video, Music, FileText, Paperclip } from 'lucide-vue-next'
 import { memoryApi } from '@/api'
+import { useCoupleStore } from '@/stores/couple'
 import MemoryCard from '@/components/MemoryCard.vue'
 import PhotoAlbumCard from '@/components/PhotoAlbumCard.vue'
 import UploadDialog from '@/components/UploadDialog.vue'
@@ -141,6 +142,8 @@ const page = ref(1)
 const hasMore = ref(false)
 const loading = ref(false)
 const showUpload = ref(false)
+
+const coupleStore = useCoupleStore()
 
 const filter = ref({ type: '' as string, keyword: '', start: '', end: '' })
 
@@ -258,6 +261,7 @@ function openLightbox(photos: unknown[], index: number) {
 function onCreated() {
   showUpload.value = false
   reload()
+  coupleStore.fetchInfo().catch(() => {})
 }
 
 onMounted(() => {

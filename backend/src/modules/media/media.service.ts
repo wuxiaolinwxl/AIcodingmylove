@@ -5,6 +5,7 @@ import { Memory } from '../../entities/memory.entity';
 import { CreateMemoryDto } from './dto/create-memory.dto';
 import { ListMemoriesDto } from './dto/list-memories.dto';
 import { OssService } from '../oss/oss.service';
+import { LoveScoreService, LOVE_SCORE } from '../couple/love-score.service';
 
 const MAX_PAGE_SIZE = 100;
 
@@ -16,6 +17,7 @@ export class MediaService {
     @InjectRepository(Memory)
     private memoryRepo: Repository<Memory>,
     private ossService: OssService,
+    private loveScore: LoveScoreService,
   ) {}
 
   async create(coupleId: number, uploaderId: number, dto: CreateMemoryDto) {
@@ -34,7 +36,9 @@ export class MediaService {
       fileSize: dto.fileSize || 0,
       memoryDate: new Date(dto.memoryDate),
     });
-    return this.memoryRepo.save(memory);
+    const saved = await this.memoryRepo.save(memory);
+    await this.loveScore.increment(coupleId, LOVE_SCORE.MEMORY_CREATE);
+    return saved;
   }
 
   async list(coupleId: number, query: ListMemoriesDto) {

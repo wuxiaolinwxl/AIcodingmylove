@@ -40,6 +40,9 @@ export class Message {
   @Column({ type: 'datetime', nullable: true })
   readAt: Date;
 
+  @Column({ type: 'datetime', nullable: true })
+  deletedAt: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 }

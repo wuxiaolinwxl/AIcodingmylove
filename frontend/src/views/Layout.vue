@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { Clock, MessageCircle, User, Heart } from 'lucide-vue-next'
+import { Clock, MessageCircle, User, Heart, ListChecks, CalendarHeart, Gamepad2 } from 'lucide-vue-next'
 import { useCoupleStore } from '@/stores/couple'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
@@ -80,6 +80,9 @@ const chatStore = useChatStore()
 const navItems = [
   { path: '/timeline', label: '时间轴', icon: Clock },
   { path: '/chat', label: '悄悄话', icon: MessageCircle },
+  { path: '/bucket', label: '恋爱清单', icon: ListChecks },
+  { path: '/anniversary', label: '纪念日', icon: CalendarHeart },
+  { path: '/game', label: '小游戏', icon: Gamepad2 },
   { path: '/me', label: '我的', icon: User },
 ]
 

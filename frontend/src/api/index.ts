@@ -14,6 +14,7 @@ export const userApi = {
     solarBirthday?: string | null
     lunarBirthday?: string | null
     lunarIsLeap?: boolean
+    avatarUrl?: string | null
   }) => http.patch('/user/me', data).then((r) => r.data),
 }
 
@@ -59,4 +60,30 @@ export const pushApi = {
     http.post('/push/subscribe', data).then((r) => r.data),
   unsubscribe: (endpoint: string) =>
     http.delete('/push/subscribe', { data: { endpoint } }).then((r) => r.data),
+}
+
+export const bucketApi = {
+  list: () => http.get('/bucket').then((r) => r.data),
+  toggle: (id: number) => http.post(`/bucket/${id}/toggle`).then((r) => r.data),
+  addCustom: (data: { title: string; category?: string }) =>
+    http.post('/bucket/custom', data).then((r) => r.data),
+  removeCustom: (id: number) => http.delete(`/bucket/custom/${id}`).then((r) => r.data),
+}
+
+export const anniversaryApi = {
+  list: () => http.get('/anniversary').then((r) => r.data),
+  create: (data: any) => http.post('/anniversary', data).then((r) => r.data),
+  update: (id: number, data: any) => http.patch(`/anniversary/${id}`, data).then((r) => r.data),
+  remove: (id: number) => http.delete(`/anniversary/${id}`).then((r) => r.data),
+  notes: (id: number) => http.get(`/anniversary/${id}/notes`).then((r) => r.data),
+  saveMyNote: (id: number, content: string) =>
+    http.put(`/anniversary/${id}/notes/me`, { content }).then((r) => r.data),
+  removeMyNote: (id: number) => http.delete(`/anniversary/${id}/notes/me`).then((r) => r.data),
+}
+
+export const gameApi = {
+  list: () => http.get('/game').then((r) => r.data),
+  recent: () => http.get('/game/recent').then((r) => r.data),
+  play: (game: string, payload?: any) =>
+    http.post(`/game/${game}/play`, payload || {}).then((r) => r.data),
 }

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import { io, Socket } from 'socket.io-client'
 import { chatApi } from '@/api'
+import { useCoupleStore } from '@/stores/couple'
 
 export const useChatStore = defineStore('chat', () => {
   const unread = ref(0)
@@ -50,6 +51,11 @@ export const useChatStore = defineStore('chat', () => {
     })
     s.on('disconnect', () => {
       onlineUserIds.value = []
+    })
+    s.on('lovescore', (payload: { score: number }) => {
+      if (typeof payload?.score === 'number') {
+        useCoupleStore().setLoveScore(payload.score)
+      }
     })
     socket.value = s
     return s

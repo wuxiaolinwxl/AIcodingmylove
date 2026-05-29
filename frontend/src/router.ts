@@ -8,6 +8,9 @@ import Layout from './views/Layout.vue'
 import Timeline from './views/Timeline.vue'
 import Chat from './views/Chat.vue'
 import Me from './views/Me.vue'
+import BucketList from './views/BucketList.vue'
+import Anniversary from './views/Anniversary.vue'
+import Games from './views/Games.vue'
 
 const routes = [
   { path: '/login', component: Login, meta: { public: true } },
@@ -21,6 +24,9 @@ const routes = [
       { path: '', redirect: '/timeline' },
       { path: 'timeline', component: Timeline },
       { path: 'chat', component: Chat },
+      { path: 'bucket', component: BucketList },
+      { path: 'anniversary', component: Anniversary },
+      { path: 'game', component: Games },
       { path: 'me', component: Me },
     ],
   },

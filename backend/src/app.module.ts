@@ -11,12 +11,20 @@ import { MediaModule } from './modules/media/media.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { OssModule } from './modules/oss/oss.module';
 import { PushModule } from './modules/push/push.module';
+import { BucketModule } from './modules/bucket/bucket.module';
+import { AnniversaryModule } from './modules/anniversary/anniversary.module';
+import { GameModule } from './modules/game/game.module';
 import { User } from './entities/user.entity';
 import { Couple } from './entities/couple.entity';
 import { Invitation } from './entities/invitation.entity';
 import { Memory } from './entities/memory.entity';
 import { Message } from './entities/message.entity';
 import { PushSubscription } from './entities/push-subscription.entity';
+import { BucketItem } from './entities/bucket-item.entity';
+import { BucketCompletion } from './entities/bucket-completion.entity';
+import { Anniversary } from './entities/anniversary.entity';
+import { AnniversaryNote } from './entities/anniversary-note.entity';
+import { GamePlay } from './entities/game-play.entity';
 
 function requireEnv(key: string): string {
   const v = process.env[key];
@@ -40,7 +48,7 @@ function requireEnv(key: string): string {
       username: requireEnv('DB_USER'),
       password: requireEnv('DB_PASSWORD'),
       database: requireEnv('DB_NAME'),
-      entities: [User, Couple, Invitation, Memory, Message, PushSubscription],
+      entities: [User, Couple, Invitation, Memory, Message, PushSubscription, BucketItem, BucketCompletion, Anniversary, AnniversaryNote, GamePlay],
       synchronize: process.env.DB_SYNCHRONIZE === 'true',
       charset: 'utf8mb4',
       timezone: '+08:00',
@@ -52,6 +60,9 @@ function requireEnv(key: string): string {
     ChatModule,
     OssModule,
     PushModule,
+    BucketModule,
+    AnniversaryModule,
+    GameModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
