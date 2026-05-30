@@ -5,13 +5,7 @@
       <div class="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
           <h1 class="text-2xl md:text-3xl font-semibold text-ink-900">情侣小游戏</h1>
-          <p class="text-sm text-ink-500 mt-1">
-            玩一局亲密度 <span class="text-rose-500 font-medium">+0.5%</span>
-          </p>
-        </div>
-        <div class="text-xs text-ink-500 inline-flex items-center gap-1">
-          <Heart :size="13" class="text-rose-500" fill="#D85667" />
-          当前 {{ scoreText }}%
+          <p class="text-sm text-ink-500 mt-1">一起玩游戏，悄悄提升亲密度</p>
         </div>
       </div>
 
@@ -26,10 +20,6 @@
           <div class="text-3xl mb-2">{{ g.emoji }}</div>
           <div class="text-base font-semibold text-ink-900 mb-1">{{ g.title }}</div>
           <div class="text-xs text-ink-500 leading-relaxed">{{ g.desc }}</div>
-          <div class="mt-3 inline-flex items-center gap-1 text-[11px] text-rose-500">
-            <Heart :size="11" fill="#D85667" />
-            +{{ g.score }}%
-          </div>
         </button>
       </div>
 
@@ -166,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Heart, X, Loader2, RefreshCw } from 'lucide-vue-next'
 import { gameApi } from '@/api'
 import { useCoupleStore } from '@/stores/couple'
@@ -193,8 +183,6 @@ const modal = ref<string | null>(null)
 const currentResult = ref<any>(null)
 const playing = ref(false)
 const toast = ref('')
-
-const scoreText = computed(() => Number(coupleStore.info?.loveScore || 0).toFixed(2))
 
 function gameTitle(key: string) {
   return catalog.value.find((g) => g.key === key)?.title || key
@@ -235,7 +223,7 @@ async function play(game: string, payload: any) {
     const res = await gameApi.play(game, payload)
     currentResult.value = res.result
     if (typeof res.score === 'number') coupleStore.setLoveScore(res.score)
-    showToast('亲密度 +0.5%')
+    showToast('亲密度提升了～')
     loadRecent()
   } catch (e: any) {
     showToast(e?.response?.data?.message || '操作失败')

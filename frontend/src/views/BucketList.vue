@@ -100,34 +100,45 @@
               :class="['group flex items-start gap-3 text-left card-flat !p-3.5 transition-all',
                 item.completed ? 'bg-rose-50/60 border-rose-200/60' : '']"
             >
-              <div class="flex flex-col gap-1.5 mt-0.5 items-center">
+              <!-- Both completed: overlapping avatars + heart badge -->
+              <div v-if="item.completed" class="relative mt-0.5 w-10 h-10 flex-shrink-0" @click="toggle(item)" role="button" title="双双完成（点击取消我的）">
+                <div class="absolute top-0 left-0 w-7 h-7 rounded-full border-2 border-white ring-2 ring-rose-300 overflow-hidden bg-rose-50 z-[1]">
+                  <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" class="w-full h-full object-cover" />
+                  <span v-else class="w-full h-full flex items-center justify-center text-[10px] font-medium text-rose-500">{{ selfInitial }}</span>
+                </div>
+                <div class="absolute top-2.5 left-3.5 w-7 h-7 rounded-full border-2 border-white ring-2 ring-rose-300 overflow-hidden bg-rose-50 z-[2]">
+                  <img v-if="partner?.avatarUrl" :src="partner.avatarUrl" class="w-full h-full object-cover" />
+                  <span v-else class="w-full h-full flex items-center justify-center text-[10px] font-medium text-rose-500">{{ partnerInitial }}</span>
+                </div>
+                <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center z-[3] shadow-sm">
+                  <Heart :size="10" class="text-white fill-white" />
+                </span>
+              </div>
+              <!-- Partial / none: stacked avatars with individual state -->
+              <div v-else class="flex flex-col gap-1.5 mt-0.5 items-center">
                 <button
                   type="button"
                   @click="toggle(item)"
                   :title="myChecked(item) ? '我已完成（点击取消）' : '我还没完成'"
-                  :class="['relative w-7 h-7 rounded-full border flex items-center justify-center transition-colors overflow-hidden',
-                    myChecked(item) ? 'bg-rose-500 border-rose-500 text-white' : 'border-cream-300 hover:border-rose-400 bg-white']"
+                  :class="['relative w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all overflow-hidden',
+                    myChecked(item) ? 'border-rose-400 ring-2 ring-rose-200' : 'border-cream-300 hover:border-rose-300 bg-white']"
                 >
-                  <template v-if="myChecked(item)">
-                    <Check :size="14" :stroke-width="3" />
-                  </template>
-                  <template v-else>
-                    <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" class="w-full h-full object-cover" />
-                    <span v-else class="text-[10px] text-ink-500">{{ selfInitial }}</span>
-                  </template>
+                  <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" class="w-full h-full object-cover" />
+                  <span v-else class="text-[10px] text-ink-500">{{ selfInitial }}</span>
+                  <span v-if="myChecked(item)" class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
+                    <Check :size="8" :stroke-width="3" class="text-white" />
+                  </span>
                 </button>
                 <div
                   :title="partnerChecked(item) ? 'TA 已完成' : 'TA 还没完成'"
-                  :class="['relative w-7 h-7 rounded-full border flex items-center justify-center overflow-hidden',
-                    partnerChecked(item) ? 'bg-rose-500 border-rose-500 text-white' : 'border-cream-300 bg-white']"
+                  :class="['relative w-7 h-7 rounded-full border-2 flex items-center justify-center overflow-hidden transition-all',
+                    partnerChecked(item) ? 'border-rose-400 ring-2 ring-rose-200' : 'border-cream-300 bg-white']"
                 >
-                  <template v-if="partnerChecked(item)">
-                    <Check :size="14" :stroke-width="3" />
-                  </template>
-                  <template v-else>
-                    <img v-if="partner?.avatarUrl" :src="partner.avatarUrl" class="w-full h-full object-cover" />
-                    <span v-else class="text-[10px] text-ink-500">{{ partnerInitial }}</span>
-                  </template>
+                  <img v-if="partner?.avatarUrl" :src="partner.avatarUrl" class="w-full h-full object-cover" />
+                  <span v-else class="text-[10px] text-ink-500">{{ partnerInitial }}</span>
+                  <span v-if="partnerChecked(item)" class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
+                    <Check :size="8" :stroke-width="3" class="text-white" />
+                  </span>
                 </div>
               </div>
               <div class="flex-1 min-w-0">
@@ -139,7 +150,8 @@
                 </p>
                 <div class="flex items-center gap-2 mt-1 text-[11px] text-ink-400 flex-wrap">
                   <span v-if="item.isCustom" class="text-rose-400">自定义</span>
-                  <span v-if="item.completed && item.completedAt">
+                  <span v-if="item.completed && item.completedAt" class="inline-flex items-center gap-0.5 text-rose-400">
+                    <Heart :size="9" class="fill-rose-400" />
                     {{ formatDate(item.completedAt) }} 双双完成
                   </span>
                   <span v-else-if="item.checks.length > 0">
@@ -216,7 +228,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Plus, Check, Loader2, ListChecks, Search, Trash2, X } from 'lucide-vue-next'
+import { Plus, Check, Loader2, ListChecks, Search, Trash2, X, Heart } from 'lucide-vue-next'
 import { bucketApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'

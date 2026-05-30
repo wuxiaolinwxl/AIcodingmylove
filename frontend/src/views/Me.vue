@@ -52,7 +52,10 @@
               <p class="text-xs text-ink-500">我</p>
             </div>
           </div>
-          <Heart :size="14" class="text-rose-400 mx-4" />
+          <div class="flex flex-col items-center mx-3">
+            <Heart :size="14" class="text-rose-400 mb-0.5" fill="#fb7185" />
+            <span class="text-xs font-semibold text-rose-500">{{ loveScoreText }}%</span>
+          </div>
           <div class="flex-1 flex items-center gap-3 justify-end">
             <div class="text-right">
               <p class="text-sm font-medium text-ink-900">{{ partnerName }}</p>
@@ -480,6 +483,10 @@ const partner = computed(() => {
   return members.find((m) => m.id !== userStore.user?.id)
 })
 const partnerName = computed(() => partner.value?.nickname || partner.value?.username || '伴侣')
+const loveScoreText = computed(() => {
+  const score = Number(coupleStore.info?.loveScore || 0)
+  return score % 1 === 0 ? score.toFixed(0) : score.toFixed(1)
+})
 
 const partnerHasBirthday = computed(() => !!(partner.value?.solarBirthday || partner.value?.lunarBirthday))
 const partnerSolarSummary = computed(() => {
