@@ -122,7 +122,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('message:send')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { msgType: 'text' | 'image' | 'file'; content?: string; ossKey?: string; fileName?: string; fileSize?: number; replyToId?: number },
+    @MessageBody() data: { msgType: 'text' | 'image' | 'file' | 'voice'; content?: string; ossKey?: string; fileName?: string; fileSize?: number; duration?: number; replyToId?: number },
   ) {
     const userId = (client as any).userId;
     const coupleId = (client as any).coupleId;
@@ -135,6 +135,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ossKey: data.ossKey,
       fileName: data.fileName,
       fileSize: data.fileSize,
+      duration: data.duration,
       replyToId: data.replyToId,
     });
 
@@ -170,6 +171,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       body = '[图片]';
     } else if (msg.msgType === 'file') {
       body = `[文件] ${msg.fileName || ''}`.trim();
+    } else if (msg.msgType === 'voice') {
+      body = '[语音消息]';
     }
     await this.pushService.sendToUser(partnerId, {
       title: `${senderName} 给你发来一条消息`,

@@ -13,8 +13,8 @@ export class Message {
   @Column({ type: 'int' })
   senderId: number;
 
-  @Column({ type: 'enum', enum: ['text', 'image', 'file'] })
-  msgType: 'text' | 'image' | 'file';
+  @Column({ type: 'enum', enum: ['text', 'image', 'file', 'voice'] })
+  msgType: 'text' | 'image' | 'file' | 'voice';
 
   @Column({ type: 'text', nullable: true })
   content: string;
@@ -27,6 +27,9 @@ export class Message {
 
   @Column({ type: 'bigint', default: 0 })
   fileSize: number;
+
+  @Column({ type: 'int', nullable: true })
+  duration: number | null;
 
   @Column({ type: 'int', nullable: true })
   replyToId: number;

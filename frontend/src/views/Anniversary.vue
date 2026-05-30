@@ -45,6 +45,8 @@
                   {{ formatDates(item) }}
                   <span v-if="item.recurrence === 'yearly_solar'">· 每年</span>
                   <span v-else-if="item.recurrence === 'yearly_lunar'">· 每年（农历）</span>
+                  <span v-else-if="item.recurrence === 'monthly'">· 每月</span>
+                  <span v-else-if="item.recurrence === 'weekly'">· 每周</span>
                 </p>
                 <p
                   v-if="item.daysUntil !== null"
@@ -131,7 +133,7 @@
           </div>
           <div>
             <label class="text-xs text-ink-500">重复</label>
-            <div class="flex gap-2 mt-2">
+            <div class="flex gap-2 mt-2 flex-wrap">
               <button
                 v-for="opt in recurrenceOpts"
                 :key="opt.value"
@@ -139,6 +141,22 @@
                 @click="form.recurrence = opt.value"
                 :class="['chip cursor-pointer', form.recurrence === opt.value ? 'chip-active' : '']"
               >{{ opt.label }}</button>
+            </div>
+            <div v-if="form.recurrence === 'monthly'" class="mt-2">
+              <label class="text-xs text-ink-500">每月几号</label>
+              <select v-model.number="form.recurrenceDay" class="input mt-1 !w-24">
+                <option :value="null">自动</option>
+                <option v-for="d in 31" :key="d" :value="d">{{ d }} 号</option>
+              </select>
+            </div>
+            <div v-if="form.recurrence === 'weekly'" class="mt-2 flex gap-1.5 flex-wrap">
+              <button
+                v-for="(label, idx) in weekDays"
+                :key="idx"
+                type="button"
+                @click="form.recurrenceDay = idx"
+                :class="['chip cursor-pointer', form.recurrenceDay === idx ? 'chip-active' : '']"
+              >{{ label }}</button>
             </div>
           </div>
           <div class="flex items-center gap-3 flex-wrap">
@@ -271,7 +289,8 @@ const form = ref<{
   title: string
   solarDate: string
   lunarDate: string
-  recurrence: 'none' | 'yearly_solar' | 'yearly_lunar' | 'monthly'
+  recurrence: 'none' | 'yearly_solar' | 'yearly_lunar' | 'monthly' | 'weekly'
+  recurrenceDay: number | null
   remindEnabled: boolean
   remindDaysBefore: number
 }>({
@@ -280,6 +299,7 @@ const form = ref<{
   solarDate: '',
   lunarDate: '',
   recurrence: 'yearly_solar',
+  recurrenceDay: null,
   remindEnabled: true,
   remindDaysBefore: 1,
 })
@@ -294,8 +314,12 @@ const savingNote = ref(false)
 const recurrenceOpts = [
   { value: 'yearly_solar' as const, label: '每年（公历）' },
   { value: 'yearly_lunar' as const, label: '每年（农历）' },
+  { value: 'monthly' as const, label: '每月' },
+  { value: 'weekly' as const, label: '每周' },
   { value: 'none' as const, label: '一次性' },
 ]
+
+const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 const nearestText = computed(() => {
   const upcoming = items.value
@@ -354,6 +378,7 @@ function openCreate() {
     solarDate: '',
     lunarDate: '',
     recurrence: 'yearly_solar',
+    recurrenceDay: null,
     remindEnabled: true,
     remindDaysBefore: 1,
   }
@@ -367,6 +392,7 @@ function openEdit(item: AnnItem) {
     solarDate: item.solarDate || '',
     lunarDate: item.lunarDate || '',
     recurrence: (item.recurrence as any) || 'yearly_solar',
+    recurrenceDay: (item as any).recurrenceDay ?? null,
     remindEnabled: item.remindEnabled,
     remindDaysBefore: item.remindDaysBefore,
   }
@@ -387,6 +413,7 @@ async function submitForm() {
       solarDate: form.value.solarDate || null,
       lunarDate: form.value.lunarDate || null,
       recurrence: form.value.recurrence,
+      recurrenceDay: form.value.recurrenceDay,
       remindEnabled: form.value.remindEnabled,
       remindDaysBefore: form.value.remindDaysBefore,
     }

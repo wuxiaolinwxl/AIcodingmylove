@@ -18,6 +18,11 @@ import { BucketService } from './bucket.service';
 export class BucketController {
   constructor(private bucket: BucketService) {}
 
+  @Get('daily')
+  dailyTask(@CurrentUser() user: any) {
+    return this.bucket.dailyTask(user.coupleId);
+  }
+
   @Get()
   list(@CurrentUser() user: any) {
     return this.bucket.list(user.coupleId);

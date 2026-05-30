@@ -182,4 +182,22 @@ export class BucketService implements OnModuleInit {
     await this.itemRepo.delete({ id: itemId });
     return { ok: true };
   }
+
+  async dailyTask(coupleId: number): Promise<ItemDto | null> {
+    const { items } = await this.list(coupleId);
+    const uncompleted = items.filter((i) => !i.completed);
+    if (uncompleted.length === 0) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const seed = this.hashCode(`${coupleId}-${today}`);
+    const idx = ((seed % uncompleted.length) + uncompleted.length) % uncompleted.length;
+    return uncompleted[idx];
+  }
+
+  private hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return hash;
+  }
 }

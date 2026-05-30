@@ -193,8 +193,21 @@ export class AnniversaryService implements OnModuleInit {
       const next = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       return next < t ? null : next;
     }
+    if (item.recurrence === 'monthly') {
+      const dayOfMonth = item.recurrenceDay ?? (item.solarDate ? new Date(item.solarDate).getDate() : null);
+      if (!dayOfMonth) return null;
+      let next = new Date(t.getFullYear(), t.getMonth(), dayOfMonth);
+      if (next < t) next = new Date(t.getFullYear(), t.getMonth() + 1, dayOfMonth);
+      return next;
+    }
+    if (item.recurrence === 'weekly') {
+      const targetDay = item.recurrenceDay ?? (item.solarDate ? new Date(item.solarDate).getDay() : null);
+      if (targetDay === null || targetDay === undefined) return null;
+      const diff = (targetDay - t.getDay() + 7) % 7;
+      const next = new Date(t.getTime() + (diff === 0 ? 0 : diff) * 86400000);
+      return next;
+    }
     if (item.recurrence === 'yearly_lunar') {
-      // lunar conversion not implemented; treat as null (UI will display lunarDate verbatim)
       return null;
     }
     return null;
@@ -244,6 +257,7 @@ export class AnniversaryService implements OnModuleInit {
       lunarDate?: string | null;
       lunarIsLeap?: boolean;
       recurrence?: string;
+      recurrenceDay?: number | null;
       remindEnabled?: boolean;
       remindDaysBefore?: number;
     },
@@ -257,7 +271,8 @@ export class AnniversaryService implements OnModuleInit {
       | 'none'
       | 'yearly_solar'
       | 'yearly_lunar'
-      | 'monthly';
+      | 'monthly'
+      | 'weekly';
     const saved = await this.annRepo.save(
       this.annRepo.create({
         coupleId,
@@ -267,6 +282,7 @@ export class AnniversaryService implements OnModuleInit {
         lunarDate: body.lunarDate || null,
         lunarIsLeap: !!body.lunarIsLeap,
         recurrence,
+        recurrenceDay: body.recurrenceDay ?? null,
         remindEnabled: body.remindEnabled ?? true,
         remindDaysBefore: body.remindDaysBefore ?? 1,
         isPreset: 0,
@@ -285,6 +301,7 @@ export class AnniversaryService implements OnModuleInit {
       lunarDate?: string | null;
       lunarIsLeap?: boolean;
       recurrence?: string;
+      recurrenceDay?: number | null;
       remindEnabled?: boolean;
       remindDaysBefore?: number;
     },
@@ -296,6 +313,7 @@ export class AnniversaryService implements OnModuleInit {
     if (body.lunarDate !== undefined) item.lunarDate = body.lunarDate || null;
     if (body.lunarIsLeap !== undefined) item.lunarIsLeap = !!body.lunarIsLeap;
     if (body.recurrence !== undefined) item.recurrence = body.recurrence as any;
+    if (body.recurrenceDay !== undefined) item.recurrenceDay = body.recurrenceDay;
     if (body.remindEnabled !== undefined) item.remindEnabled = !!body.remindEnabled;
     if (body.remindDaysBefore !== undefined) item.remindDaysBefore = Math.max(0, Math.min(30, body.remindDaysBefore));
     await this.annRepo.save(item);

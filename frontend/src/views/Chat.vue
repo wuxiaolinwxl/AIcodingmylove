@@ -273,6 +273,13 @@
                 <p class="text-[10px] opacity-70">{{ formatSize(cell.msg.fileSize) }} · 点击下载</p>
               </div>
             </a>
+            <!-- Voice -->
+            <VoiceMessage
+              v-else-if="cell.msg.msgType === 'voice'"
+              :src="cell.msg.ossUrl || ''"
+              :duration="cell.msg.duration || 0"
+              :is-mine="cell.msg.senderId === userStore.user?.id"
+            />
             <!-- Time + read status -->
             <div :class="['flex items-center gap-1 mt-1', cell.msg.senderId === userStore.user?.id ? 'justify-end' : '']">
               <span class="text-[10px] opacity-60">{{ formatTime(cell.msg.createdAt) }}</span>
@@ -334,19 +341,27 @@
         <button @click="triggerFile" class="btn-icon">
           <Paperclip :size="20" />
         </button>
-        <textarea
-          v-model="inputText"
-          ref="inputEl"
-          rows="1"
-          class="input flex-1 !py-2 !rounded-xl resize-none max-h-24"
-          placeholder="输入消息..."
-          @keydown.enter.exact.prevent="sendText"
-          @input="handleTyping"
-          @focus="onInputFocus"
-        ></textarea>
-        <button @click="sendText" class="btn-primary !px-3.5 !py-2" :disabled="!inputText.trim()">
-          <SendIcon :size="16" />
+        <button @click="showVoiceRecorder = !showVoiceRecorder" :class="['btn-icon', showVoiceRecorder ? '!bg-cream-100' : '']">
+          <Mic :size="20" />
         </button>
+        <template v-if="showVoiceRecorder">
+          <VoiceRecorder class="flex-1" @recorded="onVoiceRecorded" @cancel="showVoiceRecorder = false" />
+        </template>
+        <template v-else>
+          <textarea
+            v-model="inputText"
+            ref="inputEl"
+            rows="1"
+            class="input flex-1 !py-2 !rounded-xl resize-none max-h-24"
+            placeholder="输入消息..."
+            @keydown.enter.exact.prevent="sendText"
+            @input="handleTyping"
+            @focus="onInputFocus"
+          ></textarea>
+          <button @click="sendText" class="btn-primary !px-3.5 !py-2" :disabled="!inputText.trim()">
+            <SendIcon :size="16" />
+          </button>
+        </template>
       </div>
       <input ref="imageInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
       <input ref="fileInput" type="file" class="hidden" @change="handleFileUpload" />
@@ -362,7 +377,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
-import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply, Smile, RotateCcw, Heart } from 'lucide-vue-next'
+import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply, Smile, RotateCcw, Heart, Mic } from 'lucide-vue-next'
 import type { Socket } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
@@ -372,17 +387,20 @@ import { uploadToOss } from '@/api/upload'
 import ImageLightbox from '@/components/ImageLightbox.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
 import SafeImage from '@/components/SafeImage.vue'
+import VoiceRecorder from '@/components/VoiceRecorder.vue'
+import VoiceMessage from '@/components/VoiceMessage.vue'
 
 interface Msg {
   id: number
   coupleId: number
   senderId: number
-  msgType: 'text' | 'image' | 'file'
+  msgType: 'text' | 'image' | 'file' | 'voice'
   content: string | null
   ossKey: string | null
   ossUrl: string | null
   fileName: string | null
   fileSize: number
+  duration: number | null
   readAt: string | null
   createdAt: string
   replyToId?: number | null
@@ -423,6 +441,7 @@ const uploading = ref(false)
 const uploadFileName = ref('')
 const replyTo = ref<Msg | null>(null)
 const showEmoji = ref(false)
+const showVoiceRecorder = ref(false)
 const emojiPanelEl = ref<HTMLDivElement>()
 
 function toggleEmoji() {
@@ -842,6 +861,28 @@ async function handleFileUpload(e: Event) {
   } finally {
     uploading.value = false
     if (fileInput.value) fileInput.value.value = ''
+  }
+}
+
+async function onVoiceRecorded(blob: Blob, duration: number) {
+  if (!socket) return
+  showVoiceRecorder.value = false
+  uploading.value = true
+  uploadFileName.value = '语音消息'
+  try {
+    const ext = blob.type.includes('mp4') ? '.m4a' : '.webm'
+    const file = new File([blob], `voice${ext}`, { type: blob.type })
+    const res = await uploadToOss(file, 'chat', 'voice')
+    socket.emit('message:send', {
+      msgType: 'voice',
+      ossKey: res.key,
+      fileSize: res.size,
+      duration,
+      replyToId: replyTo.value?.id,
+    })
+    replyTo.value = null
+  } finally {
+    uploading.value = false
   }
 }
 

@@ -6,7 +6,7 @@
       :src="resolvedSrc"
       :alt="alt"
       :loading="loading"
-      :class="imgClass"
+      :class="[imgClass, loaded ? 'safe-img-loaded' : 'safe-img-loading']"
       decoding="async"
       @load="onLoad"
       @error="onError"
@@ -94,3 +94,17 @@ function retry() {
   attempt.value += 1;
 }
 </script>
+
+<style scoped>
+.safe-img-loading {
+  filter: blur(16px);
+  transform: scale(1.04);
+  opacity: 0.6;
+}
+.safe-img-loaded {
+  filter: blur(0);
+  transform: scale(1);
+  opacity: 1;
+  transition: filter 0.5s ease-out, transform 0.5s ease-out, opacity 0.5s ease-out;
+}
+</style>

@@ -16,6 +16,9 @@
         </button>
       </div>
 
+      <!-- Daily task -->
+      <DailyTaskCard @completed="load" />
+
       <!-- Progress -->
       <div class="card !p-4 mb-5">
         <div class="flex items-center justify-between text-xs text-ink-500 mb-2">
@@ -223,6 +226,8 @@
         </div>
       </div>
     </div>
+
+    <ConfettiCelebration v-if="showCelebration" @done="showCelebration = false" />
   </div>
 </template>
 
@@ -232,6 +237,8 @@ import { Plus, Check, Loader2, ListChecks, Search, Trash2, X, Heart } from 'luci
 import { bucketApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
+import ConfettiCelebration from '@/components/ConfettiCelebration.vue'
+import DailyTaskCard from '@/components/DailyTaskCard.vue'
 
 const userStore = useUserStore()
 const coupleStore = useCoupleStore()
@@ -260,6 +267,7 @@ const onlyCustom = ref(false)
 const keyword = ref('')
 
 const showAdd = ref(false)
+const showCelebration = ref(false)
 const newTitle = ref('')
 const newCategory = ref('日常')
 const submitting = ref(false)
@@ -344,6 +352,9 @@ async function toggle(item: Item) {
     item.checks = res.checks || []
     item.completed = !!res.completed
     item.completedAt = res.completedAt || null
+    if (!prevCompleted && item.completed) {
+      showCelebration.value = true
+    }
   } catch {
     item.checks = prevChecks
     item.completed = prevCompleted

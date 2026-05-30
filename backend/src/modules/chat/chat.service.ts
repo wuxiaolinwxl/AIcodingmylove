@@ -16,11 +16,12 @@ export class ChatService {
   async createMessage(data: {
     coupleId: number;
     senderId: number;
-    msgType: 'text' | 'image' | 'file';
+    msgType: 'text' | 'image' | 'file' | 'voice';
     content?: string;
     ossKey?: string;
     fileName?: string;
     fileSize?: number;
+    duration?: number;
     replyToId?: number;
   }) {
     let replyToId: number | null = null;
@@ -40,6 +41,8 @@ export class ChatService {
         } else if (target.msgType === 'file') {
           const name = target.fileName || '文件';
           replyToSnippet = `[文件:${name}]`;
+        } else if (target.msgType === 'voice') {
+          replyToSnippet = '[语音消息]';
         }
       }
     }
@@ -54,6 +57,7 @@ export class ChatService {
       ossKey: normalizedKey,
       fileName: data.fileName,
       fileSize: data.fileSize,
+      duration: data.duration ?? null,
       replyToId: replyToId ?? undefined,
       replyToSenderId: replyToSenderId ?? undefined,
       replyToSnippet: replyToSnippet ?? undefined,
@@ -75,6 +79,7 @@ export class ChatService {
         ossUrl: null,
         fileName: null,
         fileSize: 0,
+        duration: null,
         replyToId: null,
         replyToSenderId: null,
         replyToSnippet: null,

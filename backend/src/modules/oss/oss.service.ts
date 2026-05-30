@@ -4,7 +4,7 @@ import { promises as fsp } from 'fs';
 import * as path from 'path';
 
 const ALLOWED_SCOPES = new Set(['memory', 'chat', 'avatar']);
-const ALLOWED_TYPES = new Set(['photo', 'video', 'song', 'file', 'image']);
+const ALLOWED_TYPES = new Set(['photo', 'video', 'song', 'file', 'image', 'voice']);
 
 interface TypeRule {
   exts: Set<string>;
@@ -45,6 +45,10 @@ const TYPE_RULES: Record<string, TypeRule> = {
   },
 };
 TYPE_RULES.image = TYPE_RULES.photo;
+TYPE_RULES.voice = {
+  exts: new Set(['.webm', '.ogg', '.mp3', '.m4a', '.wav', '.mp4']),
+  mimes: new Set(['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-wav', 'video/webm']),
+};
 
 function decodeOriginalName(raw: string): string {
   if (!raw) return raw;
@@ -123,6 +127,48 @@ export class OssService {
     const url = `/uploads/${key}`;
 
     return { key, url, size: file.size, name: originalName };
+  }
+
+  getUploadRoot(): string {
+    return this.uploadRoot;
+  }
+
+  async saveFileFromBuffer(
+    buffer: Buffer,
+    originalName: string,
+    coupleId: number,
+    scope: string,
+    type: string,
+  ) {
+    await this.rootReady;
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const dir = path.join(this.uploadRoot, scope, String(coupleId), type, dateStr);
+
+    const rootResolved = path.resolve(this.uploadRoot);
+    const dirResolved = path.resolve(dir);
+    if (!dirResolved.startsWith(rootResolved + path.sep) && dirResolved !== rootResolved) {
+      throw new BadRequestException('非法的存储路径');
+    }
+
+    await fsp.mkdir(dir, { recursive: true });
+
+    const ext = path.extname(originalName).slice(0, 16);
+    const rand = Math.random().toString(36).slice(2, 10);
+    const filename = `${Date.now()}_${rand}${ext}`;
+    const filePath = path.join(dir, filename);
+
+    if (!path.resolve(filePath).startsWith(rootResolved + path.sep)) {
+      throw new BadRequestException('非法的文件路径');
+    }
+
+    await fsp.writeFile(filePath, buffer);
+
+    const key = `${scope}/${coupleId}/${type}/${dateStr}/${filename}`;
+    const url = `/uploads/${key}`;
+
+    return { key, url, size: buffer.length, name: originalName };
   }
 
   async deleteByKey(key: string | null | undefined): Promise<boolean> {

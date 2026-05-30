@@ -64,6 +64,7 @@ export const pushApi = {
 
 export const bucketApi = {
   list: () => http.get('/bucket').then((r) => r.data),
+  dailyTask: () => http.get('/bucket/daily').then((r) => r.data),
   toggle: (id: number) => http.post(`/bucket/${id}/toggle`).then((r) => r.data),
   addCustom: (data: { title: string; category?: string }) =>
     http.post('/bucket/custom', data).then((r) => r.data),

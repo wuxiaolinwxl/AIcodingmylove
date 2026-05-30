@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
 
 export type AnniversaryKind = 'birthday_a' | 'birthday_b' | 'together' | 'festival' | 'custom';
-export type AnniversaryRecurrence = 'none' | 'yearly_solar' | 'yearly_lunar' | 'monthly';
+export type AnniversaryRecurrence = 'none' | 'yearly_solar' | 'yearly_lunar' | 'monthly' | 'weekly';
 
 @Entity('anniversaries')
 @Index(['coupleId'])
@@ -29,6 +29,9 @@ export class Anniversary {
 
   @Column({ type: 'varchar', length: 32, default: 'yearly_solar' })
   recurrence: AnniversaryRecurrence;
+
+  @Column({ type: 'int', nullable: true })
+  recurrenceDay: number | null;
 
   @Column({ type: 'boolean', default: true })
   remindEnabled: boolean;
