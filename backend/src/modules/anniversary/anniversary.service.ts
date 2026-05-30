@@ -214,7 +214,10 @@ export class AnniversaryService implements OnModuleInit {
   }
 
   async list(coupleId: number) {
-    await this.ensurePresets(coupleId);
+    const presetCount = await this.annRepo.count({ where: { coupleId, isPreset: 1 } });
+    if (presetCount === 0) {
+      await this.ensurePresets(coupleId);
+    }
     const items = await this.annRepo.find({
       where: { coupleId },
       order: { isPreset: 'DESC', id: 'ASC' },

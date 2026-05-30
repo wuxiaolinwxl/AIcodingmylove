@@ -130,11 +130,10 @@ function setupBadgeSocket() {
 
 onMounted(async () => {
   primeAudioOnGesture()
-  if (!coupleStore.info) {
-    await coupleStore.fetchInfo()
-  }
-  chatStore.fetchUnread()
+  const infoPromise = coupleStore.info ? Promise.resolve() : coupleStore.fetchInfo()
+  const unreadPromise = chatStore.fetchUnread()
   setupBadgeSocket()
+  await Promise.all([infoPromise, unreadPromise])
 })
 
 onBeforeUnmount(() => {

@@ -1,16 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from './stores/user'
 
-import Login from './views/Login.vue'
-import Register from './views/Register.vue'
-import Bind from './views/Bind.vue'
 import Layout from './views/Layout.vue'
-import Timeline from './views/Timeline.vue'
-import Chat from './views/Chat.vue'
-import Me from './views/Me.vue'
-import BucketList from './views/BucketList.vue'
-import Anniversary from './views/Anniversary.vue'
-import Games from './views/Games.vue'
+
+const Login = () => import('./views/Login.vue')
+const Register = () => import('./views/Register.vue')
+const Bind = () => import('./views/Bind.vue')
+const Timeline = () => import('./views/Timeline.vue')
+const Chat = () => import('./views/Chat.vue')
+const Me = () => import('./views/Me.vue')
+const BucketList = () => import('./views/BucketList.vue')
+const Anniversary = () => import('./views/Anniversary.vue')
+const Games = () => import('./views/Games.vue')
 
 const routes = [
   { path: '/login', component: Login, meta: { public: true } },

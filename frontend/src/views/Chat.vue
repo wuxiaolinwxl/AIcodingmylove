@@ -97,6 +97,10 @@
 
     <!-- Messages -->
     <div ref="msgContainer" class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div v-if="loading && messages.length === 0" class="flex items-center justify-center h-full">
+        <Loader2 :size="20" class="animate-spin text-ink-400" />
+      </div>
+      <template v-else>
       <div v-if="loadingHistory" class="text-center py-2">
         <Loader2 :size="14" class="animate-spin inline text-ink-500" />
       </div>
@@ -308,6 +312,7 @@
           <span class="typing-dot"></span>
         </div>
       </div>
+      </template>
     </div>
 
     <!-- Input area -->
@@ -934,16 +939,15 @@ watch(searchQuery, (q) => {
 })
 
 onMounted(async () => {
-  if (!coupleStore.info) {
-    await coupleStore.fetchInfo()
-  }
-  loadHistory()
+  const infoPromise = coupleStore.info ? Promise.resolve() : coupleStore.fetchInfo()
+  const historyPromise = loadHistory()
   setupSocket()
   document.addEventListener('click', handleDocClick)
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', onViewportResize)
   }
   nowTimer = setInterval(() => { nowTick.value = Date.now() }, 15_000)
+  await Promise.all([infoPromise, historyPromise])
 })
 
 onBeforeUnmount(() => {

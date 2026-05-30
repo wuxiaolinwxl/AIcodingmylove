@@ -99,15 +99,16 @@ export class CoupleService {
   }
 
   async getInfo(coupleId: number) {
-    const couple = await this.coupleRepo.findOne({ where: { id: coupleId } });
+    const [couple, members] = await Promise.all([
+      this.coupleRepo.findOne({ where: { id: coupleId } }),
+      this.userRepo.find({
+        where: { coupleId },
+        select: ['id', 'username', 'nickname', 'avatarUrl', 'solarBirthday', 'lunarBirthday', 'lunarIsLeap'],
+      }),
+    ]);
     if (!couple) {
       throw new NotFoundException('未找到空间信息');
     }
-
-    const members = await this.userRepo.find({
-      where: [{ id: couple.userAId }, { id: couple.userBId }],
-      select: ['id', 'username', 'nickname', 'avatarUrl', 'solarBirthday', 'lunarBirthday', 'lunarIsLeap'],
-    });
 
     return {
       id: couple.id,
