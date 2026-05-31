@@ -1,7 +1,4 @@
 import http from './http'
-import { uploadChunked } from './chunked-upload'
-
-const CHUNK_THRESHOLD = 5 * 1024 * 1024
 
 export async function uploadToOss(
   file: File,
@@ -9,15 +6,16 @@ export async function uploadToOss(
   type: string,
   onProgress?: (percent: number) => void,
 ) {
-  if (file.size > CHUNK_THRESHOLD) {
-    return uploadChunked(file, scope, type, onProgress)
-  }
-
   const form = new FormData()
   form.append('file', file)
 
   const res = await http.post(`/oss/upload?scope=${encodeURIComponent(scope)}&type=${encodeURIComponent(type)}`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
+    onUploadProgress(e) {
+      if (e.total && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100))
+      }
+    },
   })
 
   onProgress?.(100)

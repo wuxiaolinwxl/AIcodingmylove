@@ -660,13 +660,6 @@ function formatSize(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-function showDateSeparator(idx: number) {
-  if (idx === 0) return true
-  const cur = new Date(messages.value[idx].createdAt).toDateString()
-  const prev = new Date(messages.value[idx - 1].createdAt).toDateString()
-  return cur !== prev
-}
-void showDateSeparator
 
 function highlightSegments(text: string, q: string): Array<{ text: string; mark: boolean }> {
   if (!q) return [{ text, mark: false }]

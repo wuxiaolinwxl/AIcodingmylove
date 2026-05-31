@@ -2,11 +2,12 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      ...(mode === 'production' ? { './demo': resolve(__dirname, 'src/demo-stub.ts') } : {}),
     },
   },
   build: {
@@ -39,4 +40,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

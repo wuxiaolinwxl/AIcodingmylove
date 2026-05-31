@@ -64,7 +64,11 @@ export class OssService {
   private rootReady: Promise<void>;
 
   constructor(private config: ConfigService) {
-    this.uploadRoot = this.config.get('UPLOAD_DIR', '/root/AIcoding/uploads');
+    const dir = this.config.get<string>('UPLOAD_DIR');
+    if (!dir) {
+      throw new Error('环境变量 UPLOAD_DIR 未配置，请在 .env 中设置上传目录');
+    }
+    this.uploadRoot = dir;
     this.rootReady = fsp.mkdir(this.uploadRoot, { recursive: true }).then(() => undefined);
   }
 

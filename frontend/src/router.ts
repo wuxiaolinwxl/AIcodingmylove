@@ -22,7 +22,7 @@ const routes = [
     component: Layout,
     meta: { requireCouple: true },
     children: [
-      { path: '', redirect: '/timeline' },
+      { path: '', redirect: '/chat' },
       { path: 'timeline', component: Timeline },
       { path: 'chat', component: Chat },
       { path: 'bucket', component: BucketList },
@@ -31,7 +31,7 @@ const routes = [
       { path: 'me', component: Me },
     ],
   },
-  { path: '/:pathMatch(.*)*', redirect: '/timeline' },
+  { path: '/:pathMatch(.*)*', redirect: '/chat' },
 ]
 
 const router = createRouter({
@@ -60,7 +60,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.path === '/bind' && user.isBound) {
-    return '/timeline'
+    return '/chat'
   }
 
   return true

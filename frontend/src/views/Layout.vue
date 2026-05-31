@@ -78,8 +78,8 @@ const userStore = useUserStore()
 const chatStore = useChatStore()
 
 const navItems = [
-  { path: '/timeline', label: '时间轴', icon: Clock },
   { path: '/chat', label: '悄悄话', icon: MessageCircle },
+  { path: '/timeline', label: '时间轴', icon: Clock },
   { path: '/bucket', label: '恋爱清单', icon: ListChecks },
   { path: '/anniversary', label: '纪念日', icon: CalendarHeart },
   { path: '/game', label: '小游戏', icon: Gamepad2 },

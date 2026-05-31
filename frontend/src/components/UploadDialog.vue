@@ -175,7 +175,7 @@ async function handleFile(e: Event) {
     uploadedKey.value = last.key
     uploadedUrl.value = last.url
   } catch (e: any) {
-    error.value = '文件上传失败，请重试'
+    error.value = e?.response?.data?.message || '文件上传失败，请重试'
   } finally {
     uploading.value = false
     if (fileEl.value) fileEl.value.value = ''

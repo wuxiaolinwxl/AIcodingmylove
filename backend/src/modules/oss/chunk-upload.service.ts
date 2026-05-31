@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { promises as fsp } from 'fs';
 import * as path from 'path';
@@ -17,13 +17,82 @@ interface ChunkSession {
   createdAt: number;
 }
 
+interface SessionMeta {
+  coupleId: number;
+  userId: number;
+  fileName: string;
+  fileSize: number;
+  totalChunks: number;
+  scope: string;
+  type: string;
+  receivedChunks: number[];
+  createdAt: number;
+}
+
 const CHUNK_TTL = 3600 * 1000;
+const META_FILE = '_meta.json';
 
 @Injectable()
-export class ChunkUploadService {
+export class ChunkUploadService implements OnModuleInit {
   private sessions = new Map<string, ChunkSession>();
 
   constructor(private ossService: OssService) {}
+
+  async onModuleInit() {
+    await this.restoreSessions();
+  }
+
+  private getChunksRoot(): string {
+    return path.join(this.ossService.getUploadRoot(), '_chunks');
+  }
+
+  private async persistMeta(uploadId: string, session: ChunkSession) {
+    const meta: SessionMeta = {
+      coupleId: session.coupleId,
+      userId: session.userId,
+      fileName: session.fileName,
+      fileSize: session.fileSize,
+      totalChunks: session.totalChunks,
+      scope: session.scope,
+      type: session.type,
+      receivedChunks: [...session.receivedChunks],
+      createdAt: session.createdAt,
+    };
+    const metaPath = path.join(session.tempDir, META_FILE);
+    await fsp.writeFile(metaPath, JSON.stringify(meta));
+  }
+
+  private async restoreSessions() {
+    const chunksRoot = this.getChunksRoot();
+    let entries: string[];
+    try {
+      entries = await fsp.readdir(chunksRoot);
+    } catch {
+      return;
+    }
+
+    for (const uploadId of entries) {
+      const tempDir = path.join(chunksRoot, uploadId);
+      const metaPath = path.join(tempDir, META_FILE);
+      try {
+        const stat = await fsp.stat(tempDir);
+        if (!stat.isDirectory()) continue;
+        const raw = await fsp.readFile(metaPath, 'utf-8');
+        const meta: SessionMeta = JSON.parse(raw);
+        if (Date.now() - meta.createdAt > CHUNK_TTL) {
+          await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+          continue;
+        }
+        this.sessions.set(uploadId, {
+          ...meta,
+          receivedChunks: new Set(meta.receivedChunks),
+          tempDir,
+        });
+      } catch {
+        await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
+    }
+  }
 
   async initUpload(
     coupleId: number,
@@ -41,7 +110,7 @@ export class ChunkUploadService {
     const tempDir = path.join(uploadRoot, '_chunks', uploadId);
     await fsp.mkdir(tempDir, { recursive: true });
 
-    this.sessions.set(uploadId, {
+    const session: ChunkSession = {
       coupleId,
       userId,
       fileName: data.fileName,
@@ -52,7 +121,10 @@ export class ChunkUploadService {
       receivedChunks: new Set(),
       tempDir,
       createdAt: Date.now(),
-    });
+    };
+
+    this.sessions.set(uploadId, session);
+    await this.persistMeta(uploadId, session);
 
     return { uploadId, totalChunks: data.totalChunks };
   }
@@ -67,6 +139,7 @@ export class ChunkUploadService {
     const chunkPath = path.join(session.tempDir, `chunk_${chunkIndex}`);
     await fsp.writeFile(chunkPath, buffer);
     session.receivedChunks.add(chunkIndex);
+    await this.persistMeta(uploadId, session);
 
     return {
       chunkIndex,

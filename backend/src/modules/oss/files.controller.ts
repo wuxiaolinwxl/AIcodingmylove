@@ -26,7 +26,11 @@ export class FilesController {
     @InjectRepository(User)
     private userRepo: Repository<User>,
   ) {
-    this.uploadRoot = path.resolve(config.get('UPLOAD_DIR', '/root/AIcoding/uploads'));
+    const dir = config.get<string>('UPLOAD_DIR');
+    if (!dir) {
+      throw new Error('环境变量 UPLOAD_DIR 未配置，请在 .env 中设置上传目录');
+    }
+    this.uploadRoot = path.resolve(dir);
   }
 
   @Get('*')
