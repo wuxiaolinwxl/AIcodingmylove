@@ -62,6 +62,14 @@
             <input v-model="onlyCustom" type="checkbox" class="accent-rose-500" />
             只看自定义
           </label>
+          <label class="inline-flex items-center gap-1.5 text-xs text-ink-700 cursor-pointer">
+            <input v-model="onlyMyChecked" type="checkbox" class="accent-rose-500" />
+            我已选
+          </label>
+          <label class="inline-flex items-center gap-1.5 text-xs text-ink-700 cursor-pointer">
+            <input v-model="onlyPartnerChecked" type="checkbox" class="accent-rose-500" />
+            TA已选
+          </label>
           <div class="relative flex-1 min-w-[140px]">
             <Search :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
             <input
@@ -153,7 +161,7 @@
                     <Heart :size="9" class="fill-rose-400" />
                     {{ formatDate(item.completedAt) }} 双双完成
                   </span>
-                  <span v-else-if="item.checks.length > 0">
+                  <span v-else-if="item.checks.length > 0" :class="partnerChecked(item) ? 'text-blue-500' : 'text-rose-400'">
                     {{ checksLabel(item) }}
                   </span>
                 </div>
@@ -270,6 +278,8 @@ const loading = ref(true)
 const activeCat = ref('')
 const hideDone = ref(false)
 const onlyCustom = ref(false)
+const onlyMyChecked = ref(false)
+const onlyPartnerChecked = ref(false)
 const keyword = ref('')
 
 const GROUP_LIMIT = 12
@@ -288,7 +298,7 @@ function visibleItems(g: { category: string; items: Item[] }) {
   return isExpanded(g.category) ? g.items : g.items.slice(0, GROUP_LIMIT)
 }
 
-watch([activeCat, hideDone, onlyCustom, keyword], () => {
+watch([activeCat, hideDone, onlyCustom, onlyMyChecked, onlyPartnerChecked, keyword], () => {
   expandedGroups.value = new Set()
 })
 
@@ -308,6 +318,8 @@ const filtered = computed(() => {
     if (activeCat.value && it.category !== activeCat.value) return false
     if (hideDone.value && it.completed) return false
     if (onlyCustom.value && !it.isCustom) return false
+    if (onlyMyChecked.value && !myChecked(it)) return false
+    if (onlyPartnerChecked.value && !partnerChecked(it)) return false
     if (kw && !it.title.toLowerCase().includes(kw)) return false
     return true
   })
