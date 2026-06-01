@@ -100,7 +100,7 @@ async function handleLogin() {
   try {
     await userStore.login(form.value)
     if (userStore.isBound) {
-      router.push('/timeline')
+      router.push('/chat')
     } else {
       router.push('/bind')
     }

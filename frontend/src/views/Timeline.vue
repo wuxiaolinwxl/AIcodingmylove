@@ -86,11 +86,12 @@
           </div>
         </div>
 
-        <div v-if="hasMore" class="text-center mt-6">
-          <button @click="loadMore" class="btn-secondary" :disabled="loading">
-            <Loader2 v-if="loading" :size="14" class="animate-spin" />
-            {{ loading ? '加载中...' : '加载更多' }}
-          </button>
+        <div ref="sentinelEl" class="h-10 mt-4 flex items-center justify-center text-xs text-ink-400">
+          <span v-if="loading && items.length > 0" class="inline-flex items-center gap-1">
+            <Loader2 :size="14" class="animate-spin" />
+            加载中...
+          </span>
+          <span v-else-if="!hasMore && items.length > 0">已经到底啦</span>
         </div>
       </div>
     </div>
@@ -108,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { Plus, Search, Loader2, Sparkles, Layers, Image, Video, Music, FileText, Paperclip } from 'lucide-vue-next'
 import { memoryApi } from '@/api'
 import { useCoupleStore } from '@/stores/couple'
@@ -142,6 +143,11 @@ const page = ref(1)
 const hasMore = ref(false)
 const loading = ref(false)
 const showUpload = ref(false)
+const sentinelEl = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+const INITIAL_PAGE_SIZE = 6
+const NEXT_PAGE_SIZE = 12
 
 const coupleStore = useCoupleStore()
 
@@ -219,9 +225,11 @@ function formatDate(d: string) {
 }
 
 async function fetchList(p = 1) {
+  if (loading.value) return
   loading.value = true
   try {
-    const params: any = { page: p, pageSize: 20 }
+    const pageSize = p === 1 ? INITIAL_PAGE_SIZE : NEXT_PAGE_SIZE
+    const params: any = { page: p, pageSize }
     if (filter.value.type) params.type = filter.value.type
     if (filter.value.keyword) params.keyword = filter.value.keyword
     if (filter.value.start) params.start = filter.value.start
@@ -244,10 +252,6 @@ function reload() {
   fetchList(1)
 }
 
-function loadMore() {
-  fetchList(page.value + 1)
-}
-
 async function handleRemove(id: number) {
   await memoryApi.remove(id)
   items.value = items.value.filter((i) => i.id !== id)
@@ -264,7 +268,35 @@ function onCreated() {
   coupleStore.fetchInfo().catch(() => {})
 }
 
-onMounted(() => {
-  fetchList(1)
+function setupObserver() {
+  if (typeof IntersectionObserver === 'undefined') return
+  if (observer) observer.disconnect()
+  if (!sentinelEl.value) return
+  observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting && hasMore.value && !loading.value) {
+          fetchList(page.value + 1)
+        }
+      }
+    },
+    { rootMargin: '300px 0px' },
+  )
+  observer.observe(sentinelEl.value)
+}
+
+watch(sentinelEl, (el) => {
+  if (el) setupObserver()
+})
+
+onMounted(async () => {
+  await fetchList(1)
+  await nextTick()
+  setupObserver()
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
 })
 </script>

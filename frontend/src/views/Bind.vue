@@ -140,7 +140,7 @@ async function handleAccept() {
   try {
     await coupleStore.accept(inputCode.value.toUpperCase())
     await userStore.fetchMe()
-    router.push('/timeline')
+    router.push('/chat')
   } catch (e: any) {
     acceptError.value = e?.response?.data?.message || '绑定失败，请重试'
   } finally {
