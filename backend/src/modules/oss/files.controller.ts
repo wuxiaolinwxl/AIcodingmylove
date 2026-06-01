@@ -69,7 +69,7 @@ export class FilesController {
     if (!user) throw new ForbiddenException('用户不存在');
 
     if (scope === 'avatar') {
-      if (user.id !== ownerId && user.coupleId && !(await this.isPartner(user, ownerId))) {
+      if (user.coupleId !== ownerId) {
         throw new ForbiddenException('无权访问');
       }
     } else if (user.coupleId !== ownerId) {
@@ -89,11 +89,5 @@ export class FilesController {
 
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.sendFile(abs);
-  }
-
-  private async isPartner(user: User, ownerId: number): Promise<boolean> {
-    if (!user.coupleId) return false;
-    const partner = await this.userRepo.findOne({ where: { id: ownerId } });
-    return !!partner && partner.coupleId === user.coupleId;
   }
 }

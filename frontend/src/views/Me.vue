@@ -414,7 +414,8 @@ async function onAvatarSelected(e: Event) {
   try {
     const compressed = await compressImage(file, 512, 0.85)
     const res = await ossApi.upload(compressed, 'avatar', 'image')
-    await userStore.updateProfile({ avatarUrl: res.url })
+    const cleanUrl = res.url.split('?')[0]
+    await userStore.updateProfile({ avatarUrl: cleanUrl })
     coupleStore.fetchInfo().catch(() => {})
   } catch (err: any) {
     avatarError.value = err?.response?.data?.message || '头像上传失败'

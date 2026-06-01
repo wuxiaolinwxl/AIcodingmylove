@@ -35,7 +35,8 @@ export function compressImage(
             reject(new Error('压缩失败'))
             return
           }
-          const compressed = new File([blob], file.name, {
+          const name = file.name.replace(/\.[^.]+$/, '.jpg')
+          const compressed = new File([blob], name, {
             type: 'image/jpeg',
             lastModified: Date.now(),
           })
