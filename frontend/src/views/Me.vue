@@ -292,6 +292,7 @@ import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileT
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
 import { memoryApi, ossApi } from '@/api'
+import { compressImage } from '@/utils/image'
 import { isPushSupported, getCurrentPushSubscription, subscribePush, unsubscribePush, notificationPermission, isIOS, isStandalone } from '@/utils/push'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
@@ -404,14 +405,15 @@ async function onAvatarSelected(e: Event) {
     input.value = ''
     return
   }
-  if (file.size > 5 * 1024 * 1024) {
-    avatarError.value = '图片需小于 5MB'
+  if (file.size > 20 * 1024 * 1024) {
+    avatarError.value = '图片需小于 20MB'
     input.value = ''
     return
   }
   avatarUploading.value = true
   try {
-    const res = await ossApi.upload(file, 'avatar', 'image')
+    const compressed = await compressImage(file, 512, 0.85)
+    const res = await ossApi.upload(compressed, 'avatar', 'image')
     await userStore.updateProfile({ avatarUrl: res.url })
     coupleStore.fetchInfo().catch(() => {})
   } catch (err: any) {
