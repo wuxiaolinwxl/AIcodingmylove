@@ -718,9 +718,9 @@ async function loadEarlier() {
   }
 }
 
-function setupSocket() {
+async function setupSocket() {
   if (!userStore.token) return
-  const s = chatStore.connect(userStore.token)
+  const s = await chatStore.connect(userStore.token)
   socket = s
 
   s.off('message:new', onMessageNew)

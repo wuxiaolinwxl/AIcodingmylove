@@ -17,13 +17,14 @@ export class LoveScoreService {
 
   async increment(coupleId: number, delta: number): Promise<number> {
     if (!coupleId || !delta) return this.get(coupleId);
-    await this.coupleRepo
-      .createQueryBuilder()
-      .update(Couple)
-      .set({ loveScore: () => 'loveScore + :delta' })
-      .where('id = :id', { id: coupleId })
-      .setParameters({ delta })
-      .execute();
+    const result = await this.coupleRepo.query(
+      'UPDATE couples SET loveScore = loveScore + ? WHERE id = ?; SELECT loveScore FROM couples WHERE id = ?',
+      [delta, coupleId, coupleId],
+    );
+    const rows = Array.isArray(result) ? result[result.length - 1] : result;
+    if (Array.isArray(rows) && rows.length > 0) {
+      return Number(rows[0].loveScore);
+    }
     return this.get(coupleId);
   }
 

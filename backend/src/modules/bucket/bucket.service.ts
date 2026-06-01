@@ -126,10 +126,12 @@ export class BucketService implements OnModuleInit {
         this.compRepo.create({ coupleId, itemId, completedBy: userId }),
       );
     }
-    const couple = await this.coupleRepo.findOne({ where: { id: coupleId } });
+    const [couple, all] = await Promise.all([
+      this.coupleRepo.findOne({ where: { id: coupleId } }),
+      this.compRepo.find({ where: { coupleId, itemId } }),
+    ]);
     const memberIds = couple ? [couple.userAId, couple.userBId].filter(Boolean) : [];
     const requiredCount = memberIds.length >= 2 ? 2 : 1;
-    const all = await this.compRepo.find({ where: { coupleId, itemId } });
     const sorted = all.slice().sort(
       (a, b) => a.completedAt.getTime() - b.completedAt.getTime(),
     );

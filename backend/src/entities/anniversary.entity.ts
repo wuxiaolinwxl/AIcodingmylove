@@ -6,6 +6,8 @@ export type AnniversaryRecurrence = 'none' | 'yearly_solar' | 'yearly_lunar' | '
 @Entity('anniversaries')
 @Index(['coupleId'])
 @Index(['coupleId', 'kind'])
+@Index(['remindEnabled'])
+@Index(['coupleId', 'isPreset'])
 export class Anniversary {
   @PrimaryGeneratedColumn()
   id: number;

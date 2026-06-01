@@ -15,8 +15,6 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'socket': ['socket.io-client'],
-          'icons': ['lucide-vue-next'],
         },
       },
     },

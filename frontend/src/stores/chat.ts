@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
-import { io, Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
 import { chatApi } from '@/api'
 import { useCoupleStore } from '@/stores/couple'
 
@@ -27,12 +27,13 @@ export const useChatStore = defineStore('chat', () => {
     unread.value = 0
   }
 
-  function connect(token: string): Socket {
+  async function connect(token: string): Promise<Socket> {
     if (socket.value && socket.value.connected) return socket.value
     if (socket.value) {
       socket.value.connect()
       return socket.value
     }
+    const { io } = await import('socket.io-client')
     const s = io(`${location.protocol}//${location.host}/chat`, {
       transports: ['websocket', 'polling'],
       auth: { token },

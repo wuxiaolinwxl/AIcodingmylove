@@ -121,9 +121,9 @@ const onMessageNew = (msg: IncomingMsg) => {
   notifyNewMessage({ preview: previewOf(msg) })
 }
 
-function setupBadgeSocket() {
+async function setupBadgeSocket() {
   if (!userStore.token) return
-  const s = chatStore.connect(userStore.token)
+  const s = await chatStore.connect(userStore.token)
   s.off('message:new', onMessageNew)
   s.on('message:new', onMessageNew)
 }

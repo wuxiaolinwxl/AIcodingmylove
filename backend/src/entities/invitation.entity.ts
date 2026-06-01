@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
 
 @Entity('invitations')
+@Index(['inviterId', 'status', 'expiresAt'])
 export class Invitation {
   @PrimaryGeneratedColumn()
   id: number;

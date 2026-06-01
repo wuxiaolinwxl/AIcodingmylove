@@ -72,17 +72,27 @@ export class AnniversaryService implements OnModuleInit {
 
   private async backfillAllCouples() {
     const couples = await this.coupleRepo.find();
+    if (couples.length === 0) return;
+    const userIds = new Set<number>();
     for (const c of couples) {
-      await this.ensurePresets(c.id);
+      userIds.add(c.userAId);
+      userIds.add(c.userBId);
+    }
+    const users = await this.userRepo.find({ where: [...userIds].map((id) => ({ id })) });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    for (const c of couples) {
+      await this.ensurePresets(c.id, c, userMap.get(c.userAId) || null, userMap.get(c.userBId) || null);
     }
   }
 
-  async ensurePresets(coupleId: number) {
-    const couple = await this.coupleRepo.findOne({ where: { id: coupleId } });
+  async ensurePresets(coupleId: number, couple?: Couple | null, prefetchedUserA?: User | null, prefetchedUserB?: User | null) {
+    if (!couple) {
+      couple = await this.coupleRepo.findOne({ where: { id: coupleId } });
+    }
     if (!couple) return;
 
-    const userA = await this.userRepo.findOne({ where: { id: couple.userAId } });
-    const userB = await this.userRepo.findOne({ where: { id: couple.userBId } });
+    const userA = prefetchedUserA !== undefined ? prefetchedUserA : await this.userRepo.findOne({ where: { id: couple.userAId } });
+    const userB = prefetchedUserB !== undefined ? prefetchedUserB : await this.userRepo.findOne({ where: { id: couple.userBId } });
 
     const ensureBirthday = async (
       kind: 'birthday_a' | 'birthday_b',
@@ -372,6 +382,12 @@ export class AnniversaryService implements OnModuleInit {
   async sendReminders() {
     const today = new Date();
     const items = await this.annRepo.find({ where: { remindEnabled: true } });
+    if (items.length === 0) return;
+
+    const coupleIds = [...new Set(items.map((it) => it.coupleId))];
+    const couples = await this.coupleRepo.find({ where: coupleIds.map((id) => ({ id })) });
+    const coupleMap = new Map(couples.map((c) => [c.id, c]));
+
     for (const it of items) {
       try {
         const next = this.nextOccurrence(it, today);
@@ -380,7 +396,7 @@ export class AnniversaryService implements OnModuleInit {
           (next.getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86400000,
         );
         if (days !== it.remindDaysBefore && days !== 0) continue;
-        const couple = await this.coupleRepo.findOne({ where: { id: it.coupleId } });
+        const couple = coupleMap.get(it.coupleId);
         if (!couple) continue;
         const body =
           days === 0 ? `今天是 ${it.title}！` : `还有 ${days} 天就是 ${it.title} 了`;
