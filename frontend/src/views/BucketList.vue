@@ -98,47 +98,43 @@
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div
-              v-for="item in g.items"
+              v-for="item in visibleItems(g)"
               :key="item.id"
               :class="['group flex items-start gap-3 text-left card-flat !p-3.5 transition-all',
                 item.completed ? 'bg-rose-50/60 border-rose-200/60' : '']"
             >
-              <!-- Both completed: overlapping avatars + heart badge -->
-              <div v-if="item.completed" class="relative mt-0.5 w-10 h-10 flex-shrink-0" @click="toggle(item)" role="button" title="双双完成（点击取消我的）">
-                <div class="absolute top-0 left-0 w-7 h-7 rounded-full border-2 border-white ring-2 ring-rose-300 overflow-hidden bg-rose-50 z-[1]">
-                  <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" class="w-full h-full object-cover" />
-                  <span v-else class="w-full h-full flex items-center justify-center text-[10px] font-medium text-rose-500">{{ selfInitial }}</span>
+              <!-- Both completed: overlapping name badges + heart -->
+              <div v-if="item.completed" class="relative mt-0.5 w-10 h-10 flex-shrink-0" @click="toggle(item)" role="button" :title="`双双完成（点击取消我的）`">
+                <div class="absolute top-0 left-0 w-7 h-7 rounded-full border-2 border-white ring-2 ring-rose-300 bg-rose-50 z-[1] flex items-center justify-center text-[10px] font-semibold text-rose-500" :title="selfName">
+                  {{ selfInitial }}
                 </div>
-                <div class="absolute top-2.5 left-3.5 w-7 h-7 rounded-full border-2 border-white ring-2 ring-rose-300 overflow-hidden bg-rose-50 z-[2]">
-                  <img v-if="partner?.avatarUrl" :src="partner.avatarUrl" class="w-full h-full object-cover" />
-                  <span v-else class="w-full h-full flex items-center justify-center text-[10px] font-medium text-rose-500">{{ partnerInitial }}</span>
+                <div class="absolute top-2.5 left-3.5 w-7 h-7 rounded-full border-2 border-white ring-2 ring-rose-300 bg-rose-50 z-[2] flex items-center justify-center text-[10px] font-semibold text-rose-500" :title="partnerName">
+                  {{ partnerInitial }}
                 </div>
                 <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center z-[3] shadow-sm">
                   <Heart :size="10" class="text-white fill-white" />
                 </span>
               </div>
-              <!-- Partial / none: stacked avatars with individual state -->
+              <!-- Partial / none: stacked name badges with individual state -->
               <div v-else class="flex flex-col gap-1.5 mt-0.5 items-center">
                 <button
                   type="button"
                   @click="toggle(item)"
-                  :title="myChecked(item) ? '我已完成（点击取消）' : '我还没完成'"
-                  :class="['relative w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all overflow-hidden',
-                    myChecked(item) ? 'border-rose-400 ring-2 ring-rose-200' : 'border-cream-300 hover:border-rose-300 bg-white']"
+                  :title="myChecked(item) ? `${selfName} 已完成（点击取消）` : `${selfName} 还没完成`"
+                  :class="['relative w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-semibold transition-all',
+                    myChecked(item) ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50 text-rose-500' : 'border-cream-300 hover:border-rose-300 bg-white text-ink-500']"
                 >
-                  <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" class="w-full h-full object-cover" />
-                  <span v-else class="text-[10px] text-ink-500">{{ selfInitial }}</span>
+                  {{ selfInitial }}
                   <span v-if="myChecked(item)" class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
                     <Check :size="8" :stroke-width="3" class="text-white" />
                   </span>
                 </button>
                 <div
-                  :title="partnerChecked(item) ? 'TA 已完成' : 'TA 还没完成'"
-                  :class="['relative w-7 h-7 rounded-full border-2 flex items-center justify-center overflow-hidden transition-all',
-                    partnerChecked(item) ? 'border-rose-400 ring-2 ring-rose-200' : 'border-cream-300 bg-white']"
+                  :title="partnerChecked(item) ? `${partnerName} 已完成` : `${partnerName} 还没完成`"
+                  :class="['relative w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-semibold transition-all',
+                    partnerChecked(item) ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50 text-rose-500' : 'border-cream-300 bg-white text-ink-500']"
                 >
-                  <img v-if="partner?.avatarUrl" :src="partner.avatarUrl" class="w-full h-full object-cover" />
-                  <span v-else class="text-[10px] text-ink-500">{{ partnerInitial }}</span>
+                  {{ partnerInitial }}
                   <span v-if="partnerChecked(item)" class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
                     <Check :size="8" :stroke-width="3" class="text-white" />
                   </span>
@@ -172,6 +168,16 @@
                 <Trash2 :size="14" />
               </span>
             </div>
+          </div>
+          <div v-if="g.items.length > GROUP_LIMIT" class="mt-2 text-center">
+            <button
+              type="button"
+              @click="toggleGroup(g.category)"
+              class="inline-flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600 px-3 py-1.5 rounded-full hover:bg-rose-50 transition-colors"
+            >
+              <component :is="isExpanded(g.category) ? ChevronUp : ChevronDown" :size="13" />
+              {{ isExpanded(g.category) ? '收起' : `展开剩余 ${g.items.length - GROUP_LIMIT} 项` }}
+            </button>
           </div>
         </div>
       </div>
@@ -232,8 +238,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Plus, Check, Loader2, ListChecks, Search, Trash2, X, Heart } from 'lucide-vue-next'
+import { computed, onMounted, ref, watch } from 'vue'
+import { Plus, Check, Loader2, ListChecks, Search, Trash2, X, Heart, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { bucketApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useCoupleStore } from '@/stores/couple'
@@ -265,6 +271,26 @@ const activeCat = ref('')
 const hideDone = ref(false)
 const onlyCustom = ref(false)
 const keyword = ref('')
+
+const GROUP_LIMIT = 12
+const expandedGroups = ref<Set<string>>(new Set())
+
+function isExpanded(category: string) {
+  return expandedGroups.value.has(category)
+}
+function toggleGroup(category: string) {
+  const next = new Set(expandedGroups.value)
+  if (next.has(category)) next.delete(category)
+  else next.add(category)
+  expandedGroups.value = next
+}
+function visibleItems(g: { category: string; items: Item[] }) {
+  return isExpanded(g.category) ? g.items : g.items.slice(0, GROUP_LIMIT)
+}
+
+watch([activeCat, hideDone, onlyCustom, keyword], () => {
+  expandedGroups.value = new Set()
+})
 
 const showAdd = ref(false)
 const showCelebration = ref(false)
@@ -322,9 +348,8 @@ const partner = computed(() => {
   return members.find((m) => m.id !== userStore.user?.id)
 })
 const partnerName = computed(() => partner.value?.nickname || partner.value?.username || '伴侣')
-const selfInitial = computed(() =>
-  (userStore.user?.nickname || userStore.user?.username || '我').charAt(0).toUpperCase(),
-)
+const selfName = computed(() => userStore.user?.nickname || userStore.user?.username || '我')
+const selfInitial = computed(() => selfName.value.charAt(0).toUpperCase())
 const partnerInitial = computed(() => partnerName.value.charAt(0).toUpperCase())
 
 function myChecked(item: Item) {
