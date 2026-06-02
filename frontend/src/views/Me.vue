@@ -286,7 +286,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { Heart, LogOut, Settings, Info, ChevronRight, Image, Video, Music, FileText, Paperclip, Loader2, Bell, Share, Cake, Camera } from 'lucide-vue-next'
 import { useUserStore } from '@/stores/user'
@@ -567,6 +567,8 @@ async function doLogout() {
   await router.replace('/login')
 }
 
+let isFirstActivation = true
+
 onMounted(async () => {
   if (coupleStore.info) {
     settingsForm.value.spaceName = coupleStore.info.spaceName || ''
@@ -583,6 +585,24 @@ onMounted(async () => {
     s.count = counts[s.type] || 0
   })
 
+  refreshPushState()
+})
+
+onActivated(async () => {
+  if (isFirstActivation) {
+    isFirstActivation = false
+    return
+  }
+  if (coupleStore.info) {
+    settingsForm.value.spaceName = coupleStore.info.spaceName || ''
+    settingsForm.value.anniversaryDate = coupleStore.info.anniversaryDate || ''
+  }
+  try {
+    const counts = await memoryApi.stats()
+    stats.value.forEach((s) => {
+      s.count = counts[s.type] || 0
+    })
+  } catch {}
   refreshPushState()
 })
 </script>

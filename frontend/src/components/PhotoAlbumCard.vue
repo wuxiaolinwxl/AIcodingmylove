@@ -24,7 +24,7 @@
           :src="item.ossUrl"
           loading="lazy"
           wrapper-class="absolute inset-0"
-          img-class="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+          img-class="w-full h-full object-cover hover:scale-105 transition-transform duration-200 will-change-transform"
         />
         <div v-if="idx === MAX - 1 && extra > 0" class="absolute inset-0 bg-ink-900/55 flex items-center justify-center">
           <span class="text-white text-lg font-bold">+{{ extra }}</span>

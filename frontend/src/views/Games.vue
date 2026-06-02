@@ -156,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated } from 'vue'
 import { Heart, X, Loader2, RefreshCw } from 'lucide-vue-next'
 import { gameApi } from '@/api'
 import { useCoupleStore } from '@/stores/couple'
@@ -247,9 +247,19 @@ function formatTime(iso: string) {
   return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+let isFirstActivation = true
+
 onMounted(() => {
   loadCatalog()
   loadRecent()
   if (!coupleStore.info) coupleStore.fetchInfo()
+})
+
+onActivated(() => {
+  if (isFirstActivation) {
+    isFirstActivation = false
+    return
+  }
+  loadRecent()
 })
 </script>

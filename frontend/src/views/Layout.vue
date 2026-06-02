@@ -35,7 +35,11 @@
 
     <!-- Main content -->
     <main class="flex-1 flex flex-col overflow-hidden">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive :max="6">
+          <component :is="Component" :key="route.path" />
+        </keep-alive>
+      </router-view>
     </main>
 
     <!-- Mobile bottom tabs -->
@@ -134,6 +138,15 @@ onMounted(async () => {
   const unreadPromise = chatStore.fetchUnread()
   setupBadgeSocket()
   await Promise.all([infoPromise, unreadPromise])
+
+  const idle = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 2000))
+  idle(() => {
+    import('./Timeline.vue')
+    import('./BucketList.vue')
+    import('./Anniversary.vue')
+    import('./Games.vue')
+    import('./Me.vue')
+  })
 })
 
 onBeforeUnmount(() => {

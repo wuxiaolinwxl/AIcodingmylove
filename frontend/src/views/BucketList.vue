@@ -246,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onActivated, ref, watch } from 'vue'
 import { Plus, Check, Loader2, ListChecks, Search, Trash2, X, Heart, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { bucketApi } from '@/api'
 import { useUserStore } from '@/stores/user'
@@ -430,8 +430,22 @@ function formatDate(d: string) {
   return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`
 }
 
+let isFirstActivation = true
+
 onMounted(async () => {
   if (!coupleStore.info) coupleStore.fetchInfo().catch(() => {})
   await load()
+})
+
+onActivated(async () => {
+  if (isFirstActivation) {
+    isFirstActivation = false
+    return
+  }
+  try {
+    const res = await bucketApi.list()
+    items.value = res.items
+    allCategories.value = res.categories
+  } catch {}
 })
 </script>

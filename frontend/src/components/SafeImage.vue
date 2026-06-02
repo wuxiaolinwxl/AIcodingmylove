@@ -97,14 +97,10 @@ function retry() {
 
 <style scoped>
 .safe-img-loading {
-  filter: blur(16px);
-  transform: scale(1.04);
-  opacity: 0.6;
+  opacity: 0;
 }
 .safe-img-loaded {
-  filter: blur(0);
-  transform: scale(1);
   opacity: 1;
-  transition: filter 0.5s ease-out, transform 0.5s ease-out, opacity 0.5s ease-out;
+  transition: opacity 0.3s ease-out;
 }
 </style>

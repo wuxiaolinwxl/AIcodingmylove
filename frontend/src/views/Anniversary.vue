@@ -243,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onActivated, ref } from 'vue'
 import {
   Plus, Loader2, X, Pencil, Trash2, Bell, BellOff,
   CalendarHeart, Cake, Heart, PartyPopper, BookOpen,
@@ -497,5 +497,17 @@ async function clearMyNote() {
   }
 }
 
+let isFirstActivation = true
+
 onMounted(load)
+
+onActivated(async () => {
+  if (isFirstActivation) {
+    isFirstActivation = false
+    return
+  }
+  try {
+    items.value = await anniversaryApi.list()
+  } catch {}
+})
 </script>

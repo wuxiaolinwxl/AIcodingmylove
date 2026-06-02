@@ -63,7 +63,7 @@
 
       <!-- Month groups -->
       <div v-else>
-        <div v-for="group in monthGroups" :key="group.month" class="mb-8">
+        <div v-for="group in monthGroups" :key="group.month" class="mb-8 month-section">
           <div class="sticky top-0 -mx-4 md:-mx-8 px-4 md:px-8 py-3 mb-4 bg-cream-50/90 backdrop-blur-sm border-b border-cream-200/60 z-10">
             <div class="flex items-center justify-between">
               <h3 class="text-sm font-bold text-ink-900">{{ formatMonth(group.month) }}</h3>
@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch } from 'vue'
 import { Plus, Search, Loader2, Sparkles, Layers, Image, Video, Music, FileText, Paperclip } from 'lucide-vue-next'
 import { memoryApi } from '@/api'
 import { useCoupleStore } from '@/stores/couple'
@@ -137,7 +137,7 @@ type Unit =
   | { kind: 'single'; key: string; item: MemoryItem }
   | { kind: 'album'; key: string; day: string; items: MemoryItem[] }
 
-const items = ref<MemoryItem[]>([])
+const items = shallowRef<MemoryItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const hasMore = ref(false)
@@ -146,8 +146,8 @@ const showUpload = ref(false)
 const sentinelEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-const INITIAL_PAGE_SIZE = 6
-const NEXT_PAGE_SIZE = 12
+const INITIAL_PAGE_SIZE = 12
+const NEXT_PAGE_SIZE = 20
 
 const coupleStore = useCoupleStore()
 
@@ -238,7 +238,7 @@ async function fetchList(p = 1) {
     if (p === 1) {
       items.value = res.items
     } else {
-      items.value.push(...res.items)
+      items.value = [...items.value, ...res.items]
     }
     total.value = res.total
     hasMore.value = res.hasMore
@@ -280,7 +280,7 @@ function setupObserver() {
         }
       }
     },
-    { rootMargin: '300px 0px' },
+    { rootMargin: '600px 0px' },
   )
   observer.observe(sentinelEl.value)
 }
@@ -289,10 +289,38 @@ watch(sentinelEl, (el) => {
   if (el) setupObserver()
 })
 
+let isFirstActivation = true
+
 onMounted(async () => {
   await fetchList(1)
   await nextTick()
   setupObserver()
+})
+
+onActivated(async () => {
+  nextTick(() => setupObserver())
+  if (isFirstActivation) {
+    isFirstActivation = false
+    return
+  }
+  const pageSize = INITIAL_PAGE_SIZE
+  const params: any = { page: 1, pageSize }
+  if (filter.value.type) params.type = filter.value.type
+  if (filter.value.keyword) params.keyword = filter.value.keyword
+  if (filter.value.start) params.start = filter.value.start
+  if (filter.value.end) params.end = filter.value.end
+  try {
+    const res = await memoryApi.list(params)
+    items.value = res.items
+    total.value = res.total
+    hasMore.value = res.hasMore
+    page.value = 1
+  } catch {}
+})
+
+onDeactivated(() => {
+  observer?.disconnect()
+  observer = null
 })
 
 onBeforeUnmount(() => {
@@ -300,3 +328,9 @@ onBeforeUnmount(() => {
   observer = null
 })
 </script>
+
+<style scoped>
+.month-section {
+  contain: layout style;
+}
+</style>

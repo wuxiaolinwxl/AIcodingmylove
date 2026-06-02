@@ -381,7 +381,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, watch } from 'vue'
 import { Search, X, Loader2, ChevronUp, Paperclip, ImagePlus, Send as SendIcon, Check, CheckCheck, Reply, Smile, RotateCcw, Heart, Mic } from 'lucide-vue-next'
 import type { Socket } from 'socket.io-client'
 import { useUserStore } from '@/stores/user'
@@ -934,12 +934,6 @@ watch(searchQuery, (q) => {
 onMounted(async () => {
   const infoPromise = coupleStore.info ? Promise.resolve() : coupleStore.fetchInfo()
   const historyPromise = loadHistory()
-  setupSocket()
-  document.addEventListener('click', handleDocClick)
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', onViewportResize)
-  }
-  nowTimer = setInterval(() => { nowTick.value = Date.now() }, 15_000)
   await Promise.all([infoPromise, historyPromise])
 })
 
@@ -955,6 +949,39 @@ onBeforeUnmount(() => {
   if (typingTimer) clearTimeout(typingTimer)
   if (searchTimer) clearTimeout(searchTimer)
   if (nowTimer) clearInterval(nowTimer)
+  document.removeEventListener('click', handleDocClick)
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', onViewportResize)
+  }
+})
+
+onActivated(() => {
+  if (!nowTimer) {
+    nowTimer = setInterval(() => { nowTick.value = Date.now() }, 15_000)
+  }
+  document.addEventListener('click', handleDocClick)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onViewportResize)
+  }
+  if (messages.value.length === 0 && !loading.value) {
+    loadHistory()
+  } else {
+    nextTick(() => scrollToBottom())
+  }
+  if (!socket || !socket.connected) {
+    setupSocket()
+  } else {
+    socket.emit('read')
+  }
+  chatStore.clear()
+})
+
+onDeactivated(() => {
+  if (nowTimer) {
+    clearInterval(nowTimer)
+    nowTimer = null
+  }
+  if (typingTimer) clearTimeout(typingTimer)
   document.removeEventListener('click', handleDocClick)
   if (window.visualViewport) {
     window.visualViewport.removeEventListener('resize', onViewportResize)
