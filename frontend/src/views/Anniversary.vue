@@ -16,6 +16,37 @@
         </button>
       </div>
 
+      <!-- Countdown -->
+      <div v-if="countdown && !loading" class="card !p-5 mb-6 text-center bg-gradient-to-br from-rose-50 to-cream-50 border-rose-100">
+        <p class="text-sm text-ink-600 mb-3">
+          距离 <span class="font-semibold text-rose-600">{{ countdown.title }}</span>
+        </p>
+        <div v-if="countdown.days === 0 && countdown.hours === 0 && countdown.minutes === 0 && countdown.seconds === 0" class="text-xl font-bold text-rose-500">
+          🎉 就是今天！
+        </div>
+        <div v-else class="flex items-center justify-center gap-2">
+          <div class="countdown-block">
+            <span class="countdown-num">{{ countdown.days }}</span>
+            <span class="countdown-label">天</span>
+          </div>
+          <span class="text-ink-300 text-lg font-bold">:</span>
+          <div class="countdown-block">
+            <span class="countdown-num">{{ String(countdown.hours).padStart(2, '0') }}</span>
+            <span class="countdown-label">时</span>
+          </div>
+          <span class="text-ink-300 text-lg font-bold">:</span>
+          <div class="countdown-block">
+            <span class="countdown-num">{{ String(countdown.minutes).padStart(2, '0') }}</span>
+            <span class="countdown-label">分</span>
+          </div>
+          <span class="text-ink-300 text-lg font-bold">:</span>
+          <div class="countdown-block">
+            <span class="countdown-num">{{ String(countdown.seconds).padStart(2, '0') }}</span>
+            <span class="countdown-label">秒</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Loading -->
       <div v-if="loading" class="text-center py-20 text-ink-500">
         <Loader2 :size="24" class="animate-spin mx-auto mb-2" />
@@ -176,6 +207,12 @@
               <span>天</span>
             </div>
           </div>
+          <div class="flex items-center gap-2 text-xs text-ink-700">
+            <span>目标时刻</span>
+            <select v-model.number="form.targetHour" class="input !w-24 !py-1.5">
+              <option v-for="h in 24" :key="h - 1" :value="h - 1">{{ String(h - 1).padStart(2, '0') }}:00</option>
+            </select>
+          </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
           <button @click="showForm = false" class="btn-secondary">取消</button>
@@ -243,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onActivated, ref } from 'vue'
+import { computed, onMounted, onActivated, onDeactivated, onBeforeUnmount, ref } from 'vue'
 import {
   Plus, Loader2, X, Pencil, Trash2, Bell, BellOff,
   CalendarHeart, Cake, Heart, PartyPopper, BookOpen,
@@ -262,6 +299,7 @@ interface AnnItem {
   lunarIsLeap: boolean
   remindEnabled: boolean
   remindDaysBefore: number
+  targetHour: number
   isPreset: boolean
   nextDate: string | null
   daysUntil: number | null
@@ -293,6 +331,7 @@ const form = ref<{
   recurrenceDay: number | null
   remindEnabled: boolean
   remindDaysBefore: number
+  targetHour: number
 }>({
   id: null,
   title: '',
@@ -302,6 +341,7 @@ const form = ref<{
   recurrenceDay: null,
   remindEnabled: true,
   remindDaysBefore: 1,
+  targetHour: 0,
 })
 
 const showNotes = ref(false)
@@ -330,6 +370,42 @@ const nearestText = computed(() => {
   const d = upcoming[0]
   return d === 0 ? '今天' : `${d} 天`
 })
+
+const nearestItem = computed(() => {
+  return items.value
+    .filter((i) => i.daysUntil !== null && i.nextDate)
+    .sort((a, b) => a.daysUntil! - b.daysUntil!)[0] || null
+})
+
+const now = ref(Date.now())
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+const countdown = computed(() => {
+  const item = nearestItem.value
+  if (!item || !item.nextDate) return null
+  const hour = item.targetHour ?? 0
+  const target = new Date(item.nextDate + 'T00:00:00').getTime() + hour * 3600000
+  const diff = target - now.value
+  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, title: item.title }
+  const days = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000)
+  const minutes = Math.floor((diff % 3600000) / 60000)
+  const seconds = Math.floor((diff % 60000) / 1000)
+  return { days, hours, minutes, seconds, title: item.title }
+})
+
+function startCountdown() {
+  if (!countdownTimer) {
+    countdownTimer = setInterval(() => { now.value = Date.now() }, 1000)
+  }
+}
+
+function stopCountdown() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+}
 
 const partnerNoteAuthor = computed(() => {
   if (!partnerNote.value) return ''
@@ -381,6 +457,7 @@ function openCreate() {
     recurrenceDay: null,
     remindEnabled: true,
     remindDaysBefore: 1,
+    targetHour: 0,
   }
   showForm.value = true
 }
@@ -395,6 +472,7 @@ function openEdit(item: AnnItem) {
     recurrenceDay: (item as any).recurrenceDay ?? null,
     remindEnabled: item.remindEnabled,
     remindDaysBefore: item.remindDaysBefore,
+    targetHour: item.targetHour ?? 0,
   }
   showForm.value = true
 }
@@ -416,6 +494,7 @@ async function submitForm() {
       recurrenceDay: form.value.recurrenceDay,
       remindEnabled: form.value.remindEnabled,
       remindDaysBefore: form.value.remindDaysBefore,
+      targetHour: form.value.targetHour,
     }
     if (form.value.id) {
       await anniversaryApi.update(form.value.id, payload)
@@ -499,9 +578,13 @@ async function clearMyNote() {
 
 let isFirstActivation = true
 
-onMounted(load)
+onMounted(() => {
+  load()
+  startCountdown()
+})
 
 onActivated(async () => {
+  startCountdown()
   if (isFirstActivation) {
     isFirstActivation = false
     return
@@ -510,4 +593,33 @@ onActivated(async () => {
     items.value = await anniversaryApi.list()
   } catch {}
 })
+
+onDeactivated(() => {
+  stopCountdown()
+})
+
+onBeforeUnmount(() => {
+  stopCountdown()
+})
 </script>
+
+<style scoped>
+.countdown-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3rem;
+}
+.countdown-num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-ink-900, #1a1a1a);
+  font-variant-numeric: tabular-nums;
+}
+.countdown-label {
+  font-size: 0.65rem;
+  color: var(--color-ink-500, #6b6b6b);
+  margin-top: 0.25rem;
+}
+</style>

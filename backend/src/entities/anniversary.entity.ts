@@ -43,6 +43,9 @@ export class Anniversary {
   remindDaysBefore: number;
 
   @Column({ type: 'tinyint', default: 0 })
+  targetHour: number;
+
+  @Column({ type: 'tinyint', default: 0 })
   isPreset: number;
 
   @Column({ type: 'int', nullable: true })

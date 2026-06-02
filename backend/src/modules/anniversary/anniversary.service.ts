@@ -42,6 +42,7 @@ export interface UpcomingItem {
   lunarIsLeap: boolean;
   remindEnabled: boolean;
   remindDaysBefore: number;
+  targetHour: number;
   isPreset: boolean;
   nextDate: string | null;
   daysUntil: number | null;
@@ -248,6 +249,7 @@ export class AnniversaryService implements OnModuleInit {
         lunarIsLeap: !!it.lunarIsLeap,
         remindEnabled: it.remindEnabled,
         remindDaysBefore: it.remindDaysBefore,
+        targetHour: it.targetHour ?? 0,
         isPreset: !!it.isPreset,
         nextDate: next ? this.fmtDate(next) : null,
         daysUntil: days,
@@ -273,6 +275,7 @@ export class AnniversaryService implements OnModuleInit {
       recurrenceDay?: number | null;
       remindEnabled?: boolean;
       remindDaysBefore?: number;
+      targetHour?: number;
     },
   ) {
     const title = (body.title || '').trim();
@@ -298,6 +301,7 @@ export class AnniversaryService implements OnModuleInit {
         recurrenceDay: body.recurrenceDay ?? null,
         remindEnabled: body.remindEnabled ?? true,
         remindDaysBefore: body.remindDaysBefore ?? 1,
+        targetHour: Math.max(0, Math.min(23, body.targetHour ?? 0)),
         isPreset: 0,
         createdBy: userId,
       }),
@@ -317,6 +321,7 @@ export class AnniversaryService implements OnModuleInit {
       recurrenceDay?: number | null;
       remindEnabled?: boolean;
       remindDaysBefore?: number;
+      targetHour?: number;
     },
   ) {
     const item = await this.annRepo.findOne({ where: { id } });
@@ -329,6 +334,7 @@ export class AnniversaryService implements OnModuleInit {
     if (body.recurrenceDay !== undefined) item.recurrenceDay = body.recurrenceDay;
     if (body.remindEnabled !== undefined) item.remindEnabled = !!body.remindEnabled;
     if (body.remindDaysBefore !== undefined) item.remindDaysBefore = Math.max(0, Math.min(30, body.remindDaysBefore));
+    if (body.targetHour !== undefined) item.targetHour = Math.max(0, Math.min(23, body.targetHour));
     await this.annRepo.save(item);
     return item;
   }
