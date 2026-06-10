@@ -18,17 +18,8 @@ export function isStandalone(): boolean {
   return window.matchMedia?.('(display-mode: standalone)').matches === true
 }
 
-function iosVersion(): number | null {
-  if (typeof navigator === 'undefined') return null
-  const m = navigator.userAgent.match(/OS (\d+)_(\d+)/)
-  if (!m) return null
-  return parseFloat(`${m[1]}.${m[2]}`)
-}
-
 export function isIOSReadyForPush(): boolean {
   if (!isIOS()) return true
-  const v = iosVersion()
-  if (v !== null && v < 16.4) return false
   return isStandalone()
 }
 
@@ -82,10 +73,6 @@ export async function subscribePush(): Promise<{ ok: boolean; reason?: string }>
     return { ok: false, reason: '当前浏览器不支持推送' }
   }
   if (isIOS() && !isIOSReadyForPush()) {
-    const v = iosVersion()
-    if (v !== null && v < 16.4) {
-      return { ok: false, reason: '需要 iOS 16.4 或更新版本' }
-    }
     return {
       ok: false,
       reason: '请先把网页"添加到主屏幕"，再从主屏幕图标打开后开启提醒',

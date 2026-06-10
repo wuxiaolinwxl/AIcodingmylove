@@ -219,9 +219,6 @@
             <li>从主屏幕图标启动后，再回到这里开启提醒</li>
           </ol>
         </div>
-        <div v-else-if="iosTooOld" class="text-xs text-rose-500 mb-3">
-          苹果设备需要 iOS 16.4 或更新版本才能接收推送。
-        </div>
         <div v-else-if="!pushSupported" class="text-xs text-rose-500 mb-3">
           当前浏览器不支持 Web 推送。
         </div>
@@ -234,7 +231,7 @@
             {{ pushStatusLabel }}
           </span>
           <button
-            v-if="!pushEnabled && !iosNeedsInstall && !iosTooOld"
+            v-if="!pushEnabled && !iosNeedsInstall"
             @click="enablePush"
             class="btn-primary !py-1.5 !px-3 text-xs"
             :disabled="pushBusy || !pushSupported || !isHttps"
@@ -438,10 +435,8 @@ const pushBusy = ref(false)
 const pushError = ref('')
 const isHttps = computed(() => location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
 const iosNeedsInstall = computed(() => isIOS() && !isStandalone())
-const iosTooOld = computed(() => isIOS() && isStandalone() && !pushSupported.value)
 const pushStatusLabel = computed(() => {
   if (iosNeedsInstall.value) return '未开启（需先添加到主屏幕）'
-  if (iosTooOld.value) return '系统版本过低'
   if (!pushSupported.value) return '不支持'
   if (pushEnabled.value) return '已开启'
   if (notificationPermission() === 'denied') return '权限已被禁用，请到浏览器设置中开启'
