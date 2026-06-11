@@ -20,10 +20,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || '',
     icon: data.icon || '/heart.svg',
-    badge: data.icon || '/heart.svg',
     tag: data.tag || 'memory-space',
-    renotify: true,
-    vibrate: [200, 100, 200],
     data: { url: data.url || '/chat' },
   };
   event.waitUntil(self.registration.showNotification(title, options));

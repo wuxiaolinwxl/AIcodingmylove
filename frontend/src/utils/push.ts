@@ -93,7 +93,7 @@ export async function subscribePush(): Promise<{ ok: boolean; reason?: string }>
       const key = urlBase64ToUint8Array(publicKey)
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: key.buffer as ArrayBuffer,
+        applicationServerKey: key,
       })
     } catch (e: any) {
       return { ok: false, reason: e?.message || '订阅失败' }

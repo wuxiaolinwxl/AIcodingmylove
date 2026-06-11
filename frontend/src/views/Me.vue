@@ -598,6 +598,7 @@ onActivated(async () => {
       s.count = counts[s.type] || 0
     })
   } catch {}
+  pushSupported.value = isPushSupported()
   refreshPushState()
 })
 </script>
